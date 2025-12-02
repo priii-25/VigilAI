@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VigilAI Companion</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 400px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+    
+    .header {
+      background: white;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header h1 {
+      font-size: 24px;
+      color: #667eea;
+    }
+    
+    .header p {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    
+    .content {
+      padding: 20px;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .card h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    
+    .card p {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+    }
+    
+    .impact-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    
+    .impact-high {
+      background: #fee;
+      color: #c00;
+    }
+    
+    .impact-medium {
+      background: #ffc;
+      color: #c60;
+    }
+    
+    .impact-low {
+      background: #efe;
+      color: #060;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: white;
+    }
+    
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: white;
+    }
+    
+    .btn {
+      background: white;
+      color: #667eea;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 12px;
+      width: 100%;
+    }
+    
+    .btn:hover {
+      background: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>VigilAI</h1>
+    <p>Competitive Intelligence</p>
+  </div>
+  
+  <div class="content">
+    <div id="loading" class="loading">
+      <p>Analyzing page...</p>
+    </div>
+    
+    <div id="battlecard-container" style="display: none;">
+      <!-- Battlecard content will be injected here -->
+    </div>
+    
+    <div id="no-data" class="no-data" style="display: none;">
+      <p>No competitor data found for this domain</p>
+      <button class="btn" id="view-dashboard">View Dashboard</button>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
