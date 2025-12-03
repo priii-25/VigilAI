@@ -2,8 +2,7 @@
 AI service for processing and analyzing competitor data
 """
 from typing import Dict, List, Optional
-from anthropic import Anthropic
-import openai
+import google.generativeai as genai
 from loguru import logger
 from src.core.config import settings
 
@@ -12,8 +11,8 @@ class AIProcessor:
     """AI-powered data processing and analysis"""
     
     def __init__(self):
-        self.anthropic_client = Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-        openai.api_key = settings.OPENAI_API_KEY
+        genai.configure(api_key=settings.GOOGLE_API_KEY)
+        self.model = genai.GenerativeModel('gemini-pro')
     
     async def analyze_pricing_change(self, old_data: Dict, new_data: Dict) -> Dict:
         """Analyze pricing changes and determine impact"""
@@ -37,7 +36,7 @@ Format as JSON with keys: summary, impact_score, recommended_action, talking_poi
 """
         
         try:
-            response = await self._call_claude(prompt)
+            response = await self._call_gemini(prompt)
             result = self._parse_json_response(response)
             logger.info("Pricing change analysis completed")
             return result
@@ -72,7 +71,7 @@ Format as JSON with keys: strategic_direction, new_capabilities, impact_score, r
 """
         
         try:
-            response = await self._call_claude(prompt)
+            response = await self._call_gemini(prompt)
             result = self._parse_json_response(response)
             logger.info("Hiring trends analysis completed")
             return result
@@ -96,7 +95,7 @@ Format as JSON with keys: strategic_direction, new_capabilities, impact_score, r
             return ""
         
         try:
-            response = await self._call_claude(prompt)
+            response = await self._call_gemini(prompt)
             logger.info(f"Generated {section_type} section for {competitor_name}")
             return response
         except Exception as e:
@@ -123,7 +122,7 @@ Format as JSON with keys: takeaway, implication, impact_score, category
 """
         
         try:
-            response = await self._call_claude(prompt)
+            response = await self._call_gemini(prompt)
             result = self._parse_json_response(response)
             logger.info("Content change summarized")
             return result
@@ -155,23 +154,21 @@ CHANGE:
 Answer with just: SUBSTANTIVE or NOISE
 """
             try:
-                response = await self._call_claude(prompt)
+                response = await self._call_gemini(prompt)
                 return 'NOISE' in response.upper()
             except:
                 return False
         
         return False
     
-    async def _call_claude(self, prompt: str, max_tokens: int = 2000) -> str:
-        """Call Claude API"""
-        message = self.anthropic_client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=max_tokens,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return message.content[0].text
+    async def _call_gemini(self, prompt: str, max_tokens: int = 2000) -> str:
+        """Call Google Gemini API"""
+        try:
+            response = await self.model.generate_content_async(prompt)
+            return response.text
+        except Exception as e:
+            logger.error(f"Gemini API error: {str(e)}")
+            raise
     
     def _format_pricing(self, data: Dict) -> str:
         """Format pricing data for prompt"""

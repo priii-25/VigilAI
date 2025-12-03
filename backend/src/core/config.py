@@ -19,9 +19,8 @@ class Settings(BaseSettings):
     REDIS_URL: str
     
     # AI APIs
-    OPENAI_API_KEY: str
-    ANTHROPIC_API_KEY: str
-    PERPLEXITY_API_KEY: str
+    GOOGLE_API_KEY: str
+    PERPLEXITY_API_KEY: str = ""
     
     # Vector Database
     PINECONE_API_KEY: str = ""
