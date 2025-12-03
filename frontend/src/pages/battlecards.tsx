@@ -25,14 +25,14 @@ export default function Battlecards() {
   const deleteMutation = useMutation({
     mutationFn: (id: number) => battlecardsAPI.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['battlecards']);
+      queryClient.invalidateQueries({ queryKey: ['battlecards'] });
     },
   });
 
   const duplicateMutation = useMutation({
     mutationFn: (id: number) => battlecardsAPI.duplicate(id),
     onSuccess: () => {
-      queryClient.invalidateQueries(['battlecards']);
+      queryClient.invalidateQueries({ queryKey: ['battlecards'] });
       alert('Battlecard duplicated successfully!');
     },
   });
@@ -267,9 +267,9 @@ function BattlecardCreateModal({ onClose }: any) {
 
   const createMutation = useMutation({
     mutationFn: (data: any) => battlecardsAPI.create(data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries(['battlecards']);
-      router.push(`/battlecards/${data.id}/edit`);
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['battlecards'] });
+      router.push(`/battlecards/${response.data.id}/edit`);
     },
   });
 
@@ -383,10 +383,10 @@ function BattlecardCreateModal({ onClose }: any) {
             </button>
             <button
               type="submit"
-              disabled={createMutation.isLoading}
+              disabled={createMutation.isPending}
               className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
-              {createMutation.isLoading ? 'Creating...' : 'Create & Edit Details'}
+              {createMutation.isPending ? 'Creating...' : 'Create & Edit Details'}
             </button>
           </div>
         </form>

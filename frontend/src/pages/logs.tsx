@@ -139,7 +139,7 @@ export default function LogAnalysis() {
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
                   >
                     <option value="all">All Components</option>
-                    {uniqueComponents.map((comp: string) => (
+                    {(uniqueComponents as string[]).map((comp: string) => (
                       <option key={comp} value={comp}>{comp}</option>
                     ))}
                   </select>
@@ -248,7 +248,7 @@ export default function LogAnalysis() {
                         </div>
                       </div>
                     ))}
-                    {chatMutation.isLoading && (
+                    {chatMutation.isPending && (
                       <div className="flex justify-start">
                         <div className="bg-white border border-gray-200 p-3 rounded-lg">
                           <div className="flex gap-1">
@@ -296,11 +296,11 @@ export default function LogAnalysis() {
                         onChange={(e) => setChatInput(e.target.value)}
                         placeholder="Ask about this anomaly..."
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 text-sm"
-                        disabled={chatMutation.isLoading}
+                        disabled={chatMutation.isPending}
                       />
                       <button
                         type="submit"
-                        disabled={!chatInput.trim() || chatMutation.isLoading}
+                        disabled={!chatInput.trim() || chatMutation.isPending}
                         className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send size={18} />

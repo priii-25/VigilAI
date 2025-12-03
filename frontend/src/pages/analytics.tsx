@@ -190,7 +190,7 @@ export default function Analytics() {
                         legend: { position: 'top' },
                         tooltip: {
                           callbacks: {
-                            label: (context) => `${context.dataset.label}: ${context.parsed.y}%`,
+                            label: (context: any) => `${context.dataset.label}: ${context.parsed.y}%`,
                           },
                         },
                       },
@@ -199,7 +199,7 @@ export default function Analytics() {
                           beginAtZero: true,
                           max: 100,
                           ticks: {
-                            callback: (value) => `${value}%`,
+                            callback: (value: any) => `${value}%`,
                           },
                         },
                       },

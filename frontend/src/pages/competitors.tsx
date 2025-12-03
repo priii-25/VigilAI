@@ -24,7 +24,7 @@ export default function Competitors() {
   const scrapeCompetitorMutation = useMutation({
     mutationFn: (competitorId: number) => competitorsAPI.triggerScrape(competitorId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['competitors']);
+      queryClient.invalidateQueries({ queryKey: ['competitors'] });
       alert('Scraping initiated successfully!');
     },
   });
@@ -32,7 +32,7 @@ export default function Competitors() {
   const deleteCompetitorMutation = useMutation({
     mutationFn: (competitorId: number) => competitorsAPI.delete(competitorId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['competitors']);
+      queryClient.invalidateQueries({ queryKey: ['competitors'] });
     },
   });
 
@@ -218,7 +218,7 @@ function CompetitorModal({ onClose, competitor }: any) {
   const createMutation = useMutation({
     mutationFn: (data: any) => competitorsAPI.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries(['competitors']);
+      queryClient.invalidateQueries({ queryKey: ['competitors'] });
       onClose();
     },
   });
@@ -343,10 +343,10 @@ function CompetitorModal({ onClose, competitor }: any) {
             </button>
             <button
               type="submit"
-              disabled={createMutation.isLoading}
+              disabled={createMutation.isPending}
               className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
             >
-              {createMutation.isLoading ? 'Saving...' : competitor ? 'Update' : 'Add Competitor'}
+              {createMutation.isPending ? 'Saving...' : competitor ? 'Update' : 'Add Competitor'}
             </button>
           </div>
         </form>
