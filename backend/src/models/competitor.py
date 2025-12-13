@@ -15,14 +15,13 @@ class Competitor(Base, TimestampMixin):
     description = Column(Text)
     industry = Column(String(100))
     is_active = Column(Boolean, default=True)
-    
-    # Monitored URLs
     pricing_url = Column(String(500))
+    
     careers_url = Column(String(500))
     blog_url = Column(String(500))
     
-    # Metadata
-    metadata = Column(JSON, default={})
+    # Additional data
+    extra_data = Column(JSON, default={})
     
     def __repr__(self):
         return f"<Competitor(id={self.id}, name='{self.name}')>"
