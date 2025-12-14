@@ -243,7 +243,7 @@ function CompetitorModal({ onClose, competitor }: any) {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
               required
             />
           </div>
@@ -257,7 +257,7 @@ function CompetitorModal({ onClose, competitor }: any) {
               value={formData.domain}
               onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
               placeholder="example.com"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
               required
             />
           </div>
@@ -271,7 +271,7 @@ function CompetitorModal({ onClose, competitor }: any) {
               value={formData.industry}
               onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
               placeholder="SaaS, E-commerce, etc."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
             />
           </div>
 
@@ -283,7 +283,7 @@ function CompetitorModal({ onClose, competitor }: any) {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
             />
           </div>
 
@@ -300,7 +300,7 @@ function CompetitorModal({ onClose, competitor }: any) {
                   value={formData.pricing_url}
                   onChange={(e) => setFormData({ ...formData, pricing_url: e.target.value })}
                   placeholder="https://example.com/pricing"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -313,7 +313,7 @@ function CompetitorModal({ onClose, competitor }: any) {
                   value={formData.careers_url}
                   onChange={(e) => setFormData({ ...formData, careers_url: e.target.value })}
                   placeholder="https://example.com/careers"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -326,7 +326,7 @@ function CompetitorModal({ onClose, competitor }: any) {
                   value={formData.blog_url}
                   onChange={(e) => setFormData({ ...formData, blog_url: e.target.value })}
                   placeholder="https://example.com/blog"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900"
                 />
               </div>
             </div>

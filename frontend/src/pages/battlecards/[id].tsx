@@ -206,7 +206,7 @@ export default function BattlecardDetail() {
                                                                 newPoints[idx] = e.target.value;
                                                                 setFormData({ ...formData, kill_points: newPoints });
                                                             }}
-                                                            className="flex-1 p-2 border border-gray-300 rounded-lg"
+                                                            className="flex-1 p-2 border border-gray-300 rounded-lg text-gray-900"
                                                         />
                                                         <button
                                                             onClick={() => {
@@ -258,7 +258,7 @@ export default function BattlecardDetail() {
                                                         <div className="space-y-3">
                                                             <input
                                                                 value={objection}
-                                                                className="w-full p-2 font-bold mb-2 border border-gray-300 rounded"
+                                                                className="w-full p-2 font-bold mb-2 border border-gray-300 rounded text-gray-900"
                                                                 placeholder="Objection..."
                                                                 onChange={(e) => {
                                                                     if (!formData) return;
@@ -270,7 +270,7 @@ export default function BattlecardDetail() {
                                                             />
                                                             <textarea
                                                                 value={response}
-                                                                className="w-full p-2 border border-gray-300 rounded"
+                                                                className="w-full p-2 border border-gray-300 rounded text-gray-900"
                                                                 rows={3}
                                                                 onChange={(e) => {
                                                                     if (!formData) return;

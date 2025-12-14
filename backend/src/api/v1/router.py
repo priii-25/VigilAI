@@ -2,7 +2,7 @@
 Main API router aggregating all v1 endpoints
 """
 from fastapi import APIRouter
-from src.api.v1.endpoints import competitors, battlecards, logs, auth, dashboard
+from src.api.v1.endpoints import competitors, battlecards, logs, auth, dashboard, analytics
 
 api_router = APIRouter()
 
@@ -12,3 +12,4 @@ api_router.include_router(competitors.router, prefix="/competitors", tags=["Comp
 api_router.include_router(battlecards.router, prefix="/battlecards", tags=["Battlecards"])
 api_router.include_router(logs.router, prefix="/logs", tags=["Log Analysis"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
