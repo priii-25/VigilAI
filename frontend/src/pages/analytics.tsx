@@ -136,10 +136,10 @@ export default function Analytics() {
 
       <div className="flex h-screen bg-gray-100">
         <Sidebar />
-        
+
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          
+
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">
               <h1 className="text-3xl font-bold text-gray-900 mb-6">Analytics Dashboard</h1>
@@ -181,31 +181,32 @@ export default function Analytics() {
                 {/* Win Rate Trend */}
                 <div className="card">
                   <h2 className="text-lg font-bold text-gray-900 mb-4">Win Rate Trends</h2>
-                  <Line
-                    data={winRateChartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { position: 'top' },
-                        tooltip: {
-                          callbacks: {
-                            label: (context: any) => `${context.dataset.label}: ${context.parsed.y}%`,
+                  <div className="h-[300px] relative">
+                    <Line
+                      data={winRateChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'top' },
+                          tooltip: {
+                            callbacks: {
+                              label: (context: any) => `${context.dataset.label}: ${context.parsed.y}%`,
+                            },
                           },
                         },
-                      },
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          max: 100,
-                          ticks: {
-                            callback: (value: any) => `${value}%`,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                              callback: (value: any) => `${value}%`,
+                            },
                           },
                         },
-                      },
-                    }}
-                    height={250}
-                  />
+                      }}
+                    />
+                  </div>
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-900">
                       <strong>Insight:</strong> Deals with battlecard usage show{' '}
@@ -217,23 +218,24 @@ export default function Analytics() {
                 {/* Top Battlecards */}
                 <div className="card">
                   <h2 className="text-lg font-bold text-gray-900 mb-4">Most Viewed Battlecards</h2>
-                  <Bar
-                    data={usageChartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      indexAxis: 'y',
-                      plugins: {
-                        legend: { display: false },
-                      },
-                      scales: {
-                        x: {
-                          beginAtZero: true,
+                  <div className="h-[300px] relative">
+                    <Bar
+                      data={usageChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                          legend: { display: false },
                         },
-                      },
-                    }}
-                    height={250}
-                  />
+                        scales: {
+                          x: {
+                            beginAtZero: true,
+                          },
+                        },
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -242,17 +244,18 @@ export default function Analytics() {
                 {/* Impact Score Distribution */}
                 <div className="card">
                   <h2 className="text-lg font-bold text-gray-900 mb-4">Alert Impact Distribution</h2>
-                  <Doughnut
-                    data={impactChartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { position: 'bottom' },
-                      },
-                    }}
-                    height={200}
-                  />
+                  <div className="h-[250px] relative">
+                    <Doughnut
+                      data={impactChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'bottom' },
+                        },
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {/* Recent Activity */}
@@ -280,8 +283,8 @@ export default function Analytics() {
                         )}
                       </div>
                     )) || (
-                      <p className="text-center text-gray-500 py-8">No recent activity</p>
-                    )}
+                        <p className="text-center text-gray-500 py-8">No recent activity</p>
+                      )}
                   </div>
                 </div>
               </div>
@@ -320,12 +323,12 @@ export default function Analytics() {
                           </td>
                         </tr>
                       )) || (
-                        <tr>
-                          <td colSpan={5} className="text-center py-8 text-gray-500">
-                            No data available
-                          </td>
-                        </tr>
-                      )}
+                          <tr>
+                            <td colSpan={5} className="text-center py-8 text-gray-500">
+                              No data available
+                            </td>
+                          </tr>
+                        )}
                     </tbody>
                   </table>
                 </div>
@@ -340,7 +343,7 @@ export default function Analytics() {
 
 function MetricCard({ title, value, change, icon, trend }: any) {
   const isPositive = change >= 0;
-  
+
   return (
     <div className="card">
       <div className="flex items-start justify-between mb-3">

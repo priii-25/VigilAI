@@ -2,6 +2,7 @@
 AI service for processing and analyzing competitor data
 """
 from typing import Dict, List, Optional
+import asyncio
 import google.generativeai as genai
 from loguru import logger
 from src.core.config import settings
@@ -12,7 +13,7 @@ class AIProcessor:
     
     def __init__(self):
         genai.configure(api_key=settings.GOOGLE_API_KEY)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
     
     async def analyze_pricing_change(self, old_data: Dict, new_data: Dict) -> Dict:
         """Analyze pricing changes and determine impact"""
@@ -162,13 +163,27 @@ Answer with just: SUBSTANTIVE or NOISE
         return False
     
     async def _call_gemini(self, prompt: str, max_tokens: int = 2000) -> str:
-        """Call Google Gemini API"""
-        try:
-            response = await self.model.generate_content_async(prompt)
-            return response.text
-        except Exception as e:
-            logger.error(f"Gemini API error: {str(e)}")
-            raise
+        """Call Google Gemini API with retry logic"""
+        max_retries = 3
+        base_delay = 5  # Start with 5 seconds given the strict limits
+        
+        for attempt in range(max_retries):
+            try:
+                response = await self.model.generate_content_async(prompt)
+                return response.text
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg or "Quota exceeded" in error_msg:
+                    if attempt == max_retries - 1:
+                        logger.error(f"Gemini API rate limit exceeded after {max_retries} retries.")
+                        raise
+                    
+                    delay = base_delay * (2 ** attempt)  # 5s, 10s, 20s
+                    logger.warning(f"Rate limit hit. Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error(f"Gemini API error: {error_msg}")
+                    raise
     
     def _format_pricing(self, data: Dict) -> str:
         """Format pricing data for prompt"""
