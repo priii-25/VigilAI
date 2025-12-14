@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     PERPLEXITY_API_KEY: str = ""
     
     # Vector Database
-    PINECONE_API_KEY: str = ""
-    PINECONE_ENVIRONMENT: str = ""
+    # Vector Database
+    VECTOR_DB_PATH: str = "./data/chromadb"
     
     # Integrations
     NOTION_API_KEY: str = ""

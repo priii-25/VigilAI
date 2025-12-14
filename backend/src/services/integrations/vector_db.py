@@ -1,64 +1,56 @@
 """
 Vector database service for RAG (Retrieval Augmented Generation)
-Production-ready implementation with Pinecone
+Replacement of Pinecone with ChromaDB (Local & Free)
 """
 from typing import Dict, List, Optional
-import pinecone
+import chromadb
+from chromadb.config import Settings as ChromaSettings
 from sentence_transformers import SentenceTransformer
 import numpy as np
 from loguru import logger
 from src.core.config import settings
 import hashlib
 from datetime import datetime
+import os
 
 
 class VectorDBService:
-    """Vector database service for semantic search and RAG"""
+    """Vector database service using ChromaDB for semantic search and RAG"""
     
     def __init__(self):
-        self.api_key = settings.PINECONE_API_KEY
-        self.environment = settings.PINECONE_ENVIRONMENT
-        self.index_name = "vigilai-competitors"
-        self.dimension = 768  # sentence-transformers dimension
+        self.persist_directory = settings.VECTOR_DB_PATH
+        self.collection_name = "vigilai_competitors"
         self.model = None
-        self.index = None
+        self.client = None
+        self.collection = None
         
-        if self.api_key and self.environment:
-            self._initialize()
+        self._initialize()
     
     def _initialize(self):
-        """Initialize Pinecone and embedding model"""
+        """Initialize ChromaDB and embedding model"""
         try:
-            # Initialize Pinecone
-            pinecone.init(
-                api_key=self.api_key,
-                environment=self.environment
+            # Ensure directory exists
+            os.makedirs(self.persist_directory, exist_ok=True)
+            
+            # Initialize ChromaDB Client
+            self.client = chromadb.PersistentClient(path=self.persist_directory)
+            
+            # Get or Create Collection
+            self.collection = self.client.get_or_create_collection(
+                name=self.collection_name,
+                metadata={"hnsw:space": "cosine"}
             )
-            
-            # Create index if it doesn't exist
-            if self.index_name not in pinecone.list_indexes():
-                logger.info(f"Creating Pinecone index: {self.index_name}")
-                pinecone.create_index(
-                    name=self.index_name,
-                    dimension=self.dimension,
-                    metric="cosine",
-                    metadata_config={
-                        "indexed": ["competitor_id", "data_type", "timestamp"]
-                    }
-                )
-            
-            # Connect to index
-            self.index = pinecone.Index(self.index_name)
             
             # Load embedding model
             logger.info("Loading embedding model...")
             self.model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
             
-            logger.info("Vector database initialized successfully")
+            logger.info("Vector database (ChromaDB) initialized successfully")
             
         except Exception as e:
             logger.error(f"Error initializing vector database: {str(e)}")
-            self.index = None
+            self.client = None
+            self.collection = None
     
     def embed_text(self, text: str) -> List[float]:
         """Convert text to vector embedding"""
@@ -82,17 +74,8 @@ class VectorDBService:
     ) -> bool:
         """
         Store competitor data in vector database
-        
-        Args:
-            competitor_id: ID of the competitor
-            competitor_name: Name of the competitor
-            data: Data to store (will be embedded)
-            data_type: Type of data (pricing, hiring, review, etc.)
-            
-        Returns:
-            Boolean indicating success
         """
-        if not self.index:
+        if not self.collection:
             logger.warning("Vector database not initialized")
             return False
         
@@ -122,9 +105,12 @@ class VectorDBService:
                 "content_preview": text_content[:200]
             }
             
-            # Store in Pinecone
-            self.index.upsert(
-                vectors=[(vector_id, embedding, metadata)]
+            # Store in ChromaDB
+            self.collection.add(
+                ids=[vector_id],
+                embeddings=[embedding],
+                metadatas=[metadata],
+                documents=[text_content]
             )
             
             logger.info(f"Stored vector for {competitor_name} ({data_type})")
@@ -143,17 +129,8 @@ class VectorDBService:
     ) -> List[Dict]:
         """
         Search for similar competitor data using semantic search
-        
-        Args:
-            query: Search query
-            competitor_id: Optional filter by competitor
-            data_type: Optional filter by data type
-            top_k: Number of results to return
-            
-        Returns:
-            List of similar data with scores
         """
-        if not self.index:
+        if not self.collection:
             logger.warning("Vector database not initialized")
             return []
         
@@ -165,28 +142,30 @@ class VectorDBService:
                 return []
             
             # Prepare filter
-            filter_dict = {}
+            where_filter = {}
             if competitor_id:
-                filter_dict["competitor_id"] = competitor_id
+                where_filter["competitor_id"] = competitor_id
             if data_type:
-                filter_dict["data_type"] = data_type
+                where_filter["data_type"] = data_type
             
             # Search
-            results = self.index.query(
-                vector=query_embedding,
-                top_k=top_k,
-                filter=filter_dict if filter_dict else None,
-                include_metadata=True
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=top_k,
+                where=where_filter if where_filter else None,
+                include=["metadatas", "distances", "documents"]
             )
             
             # Format results
             formatted_results = []
-            for match in results.get('matches', []):
-                formatted_results.append({
-                    'score': match['score'],
-                    'metadata': match['metadata'],
-                    'id': match['id']
-                })
+            if results['ids']:
+                for i in range(len(results['ids'][0])):
+                    formatted_results.append({
+                        'score': 1 - results['distances'][0][i], # Convert distance to similarity
+                        'metadata': results['metadatas'][0][i],
+                        'id': results['ids'][0][i],
+                        'content': results['documents'][0][i]
+                    })
             
             logger.info(f"Found {len(formatted_results)} similar results")
             return formatted_results
@@ -203,17 +182,9 @@ class VectorDBService:
     ) -> str:
         """
         Get relevant context for battlecard generation using RAG
-        
-        Args:
-            competitor_id: ID of the competitor
-            query: Context query (e.g., "pricing strategy", "weaknesses")
-            max_context_length: Maximum length of returned context
-            
-        Returns:
-            Concatenated relevant context
         """
-        if not self.index:
-            logger.warning("Vector database not available, using fallback")
+        if not self.collection:
+            logger.warning("Vector database not available")
             return ""
         
         try:
@@ -230,7 +201,10 @@ class VectorDBService:
             
             for result in results:
                 metadata = result.get('metadata', {})
-                content = metadata.get('content_preview', '')
+                content = metadata.get('content_preview', '') # Or use 'content' key if available
+                if 'content' in result:
+                     content = result['content']
+                     
                 data_type = metadata.get('data_type', '')
                 
                 # Add source label
@@ -310,13 +284,12 @@ class VectorDBService:
     
     def delete_competitor_data(self, competitor_id: int) -> bool:
         """Delete all data for a competitor"""
-        if not self.index:
+        if not self.collection:
             return False
         
         try:
-            # Delete by filter (requires Pinecone paid plan)
-            self.index.delete(
-                filter={"competitor_id": competitor_id}
+            self.collection.delete(
+                where={"competitor_id": competitor_id}
             )
             
             logger.info(f"Deleted vector data for competitor {competitor_id}")
@@ -328,97 +301,21 @@ class VectorDBService:
     
     def get_stats(self) -> Dict:
         """Get vector database statistics"""
-        if not self.index:
+        if not self.collection:
             return {"status": "not_initialized"}
         
         try:
-            stats = self.index.describe_index_stats()
+            count = self.collection.count()
             
             return {
                 "status": "active",
-                "total_vectors": stats.get('total_vector_count', 0),
-                "dimension": stats.get('dimension', 0),
-                "index_fullness": stats.get('index_fullness', 0)
+                "total_vectors": count,
+                "dimension": 768, # MPNet dimension
+                "backend": "chromadb"
             }
             
         except Exception as e:
             logger.error(f"Error getting vector DB stats: {str(e)}")
             return {"status": "error", "message": str(e)}
 
-
-# Fallback implementation without Pinecone
-class LocalVectorDB:
-    """Simple local vector storage as fallback"""
-    
-    def __init__(self):
-        self.vectors = []
-        self.model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
-        logger.info("Using local vector storage (fallback)")
-    
-    def embed_text(self, text: str) -> List[float]:
-        """Generate embedding"""
-        try:
-            embedding = self.model.encode(text, convert_to_numpy=True)
-            return embedding.tolist()
-        except Exception as e:
-            logger.error(f"Error generating embedding: {str(e)}")
-            return []
-    
-    def store_competitor_data(self, competitor_id: int, competitor_name: str, data: Dict, data_type: str) -> bool:
-        """Store data locally"""
-        try:
-            text = str(data)[:1000]
-            embedding = self.embed_text(text)
-            
-            self.vectors.append({
-                'competitor_id': competitor_id,
-                'competitor_name': competitor_name,
-                'data_type': data_type,
-                'embedding': embedding,
-                'content': text,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error storing local vector: {str(e)}")
-            return False
-    
-    def search_similar_competitor_data(self, query: str, competitor_id: Optional[int] = None, data_type: Optional[str] = None, top_k: int = 5) -> List[Dict]:
-        """Search using cosine similarity"""
-        try:
-            query_embedding = np.array(self.embed_text(query))
-            
-            results = []
-            for vec in self.vectors:
-                # Apply filters
-                if competitor_id and vec['competitor_id'] != competitor_id:
-                    continue
-                if data_type and vec['data_type'] != data_type:
-                    continue
-                
-                # Calculate similarity
-                vec_embedding = np.array(vec['embedding'])
-                similarity = np.dot(query_embedding, vec_embedding) / (
-                    np.linalg.norm(query_embedding) * np.linalg.norm(vec_embedding)
-                )
-                
-                results.append({
-                    'score': float(similarity),
-                    'metadata': {
-                        'competitor_id': vec['competitor_id'],
-                        'competitor_name': vec['competitor_name'],
-                        'data_type': vec['data_type'],
-                        'content_preview': vec['content'][:200],
-                        'timestamp': vec['timestamp']
-                    }
-                })
-            
-            # Sort by score
-            results.sort(key=lambda x: x['score'], reverse=True)
-            
-            return results[:top_k]
-            
-        except Exception as e:
-            logger.error(f"Error searching local vectors: {str(e)}")
-            return []
+# No longer need LocalVectorDB fallback as ChromaDB is local
