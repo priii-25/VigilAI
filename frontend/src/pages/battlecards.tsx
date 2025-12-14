@@ -45,7 +45,7 @@ export default function Battlecards() {
 
   const filteredBattlecards = battlecards?.filter((card: any) => {
     const matchesSearch = card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         card.competitor_name.toLowerCase().includes(searchQuery.toLowerCase());
+      card.competitor_name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterCategory === 'all' || card.category === filterCategory;
     return matchesSearch && matchesFilter;
   }) || [];
@@ -58,10 +58,10 @@ export default function Battlecards() {
 
       <div className="flex h-screen bg-gray-100">
         <Sidebar />
-        
+
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          
+
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">
               {/* Header */}
@@ -186,7 +186,7 @@ export default function Battlecards() {
                           View Full
                         </button>
                         <button
-                          onClick={() => router.push(`/battlecards/${card.id}/edit`)}
+                          onClick={() => router.push(`/battlecards/${card.id}`)}
                           className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
                         >
                           <Edit size={16} />
@@ -275,7 +275,7 @@ function BattlecardCreateModal({ onClose }: any) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Transform objections to object format
     const objection_handling = formData.objections
       .filter(o => o.objection && o.response)

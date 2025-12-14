@@ -41,6 +41,17 @@ class BattlecardCreate(BaseModel):
     kill_points: List[str] = []
 
 
+class BattlecardUpdate(BaseModel):
+    """Schema for updating a battlecard"""
+    title: Optional[str] = None
+    overview: Optional[str] = None
+    strengths: Optional[List[str]] = None
+    weaknesses: Optional[List[str]] = None
+    objection_handling: Optional[List[dict]] = None
+    kill_points: Optional[List[str]] = None
+    is_published: Optional[bool] = None
+
+
 @router.get("/", response_model=List[BattlecardResponse])
 async def list_battlecards(
     db: AsyncSession = Depends(get_db),
@@ -71,6 +82,31 @@ async def create_battlecard(
     )
     
     db.add(battlecard)
+    await db.commit()
+    await db.refresh(battlecard)
+    
+    return battlecard
+
+
+@router.put("/{battlecard_id}", response_model=BattlecardResponse)
+async def update_battlecard(
+    battlecard_id: int,
+    battlecard_update: BattlecardUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a battlecard"""
+    result = await db.execute(select(Battlecard).where(Battlecard.id == battlecard_id))
+    battlecard = result.scalar_one_or_none()
+    
+    if not battlecard:
+        raise HTTPException(status_code=404, detail="Battlecard not found")
+        
+    update_data = battlecard_update.dict(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        setattr(battlecard, field, value)
+        
     await db.commit()
     await db.refresh(battlecard)
     
