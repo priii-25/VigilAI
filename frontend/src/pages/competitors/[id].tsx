@@ -8,6 +8,19 @@ import Header from '@/components/layout/Header';
 import { RefreshCw, ExternalLink, Globe, FileText, Briefcase, TrendingUp, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+
+interface CompetitorUpdate {
+    id: number;
+    competitor_id: number;
+    update_type: 'pricing' | 'hiring' | 'content' | string;
+    category: string;
+    title: string;
+    summary: string;
+    impact_score: number;
+    source_url: string;
+    created_at: string;
+}
+
 export default function CompetitorDetail() {
     const router = useRouter();
     const { id } = router.query;
@@ -23,11 +36,22 @@ export default function CompetitorDetail() {
         enabled: !!id,
     });
 
+    const { data: updates, isLoading: isLoadingUpdates } = useQuery({
+        queryKey: ['competitor-updates', id],
+        queryFn: async () => {
+            if (!id) return [];
+            const response = await competitorsAPI.getUpdates(Number(id));
+            return response.data;
+        },
+        enabled: !!id,
+    });
+
     const scrapeMutation = useMutation({
         mutationFn: (id: number) => competitorsAPI.triggerScrape(id),
         onSuccess: () => {
             toast.success('Analysis triggered successfully');
             queryClient.invalidateQueries({ queryKey: ['competitor', id] });
+            queryClient.invalidateQueries({ queryKey: ['competitor-updates', id] });
         },
         onError: () => {
             toast.error('Failed to trigger analysis');
@@ -48,6 +72,16 @@ export default function CompetitorDetail() {
             </div>
         );
     }
+
+    // Helper to determine badge color based on update type
+    const getUpdateBadgeColor = (type: string) => {
+        switch (type) {
+            case 'pricing': return 'bg-yellow-100 text-yellow-800';
+            case 'hiring': return 'bg-blue-100 text-blue-800';
+            case 'content': return 'bg-purple-100 text-purple-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
 
     return (
         <>
@@ -124,15 +158,15 @@ export default function CompetitorDetail() {
                                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                                     <p className="text-gray-500 text-sm font-medium mb-2">Hiring Velocity</p>
                                     <div className="flex items-end gap-2">
-                                        <span className="text-2xl font-bold text-orange-500">High</span>
-                                        <span className="text-sm text-gray-400 mb-1">15 new roles</span>
+                                        <span className="text-2xl font-bold text-orange-500">Medium</span>
+                                        <span className="text-sm text-gray-400 mb-1">Active roles</span>
                                     </div>
                                 </div>
                                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                                     <p className="text-gray-500 text-sm font-medium mb-2">Recent Updates</p>
                                     <div className="flex items-end gap-2">
-                                        <span className="text-2xl font-bold text-primary-600">3</span>
-                                        <span className="text-sm text-gray-400 mb-1">Detected this week</span>
+                                        <span className="text-2xl font-bold text-primary-600">{updates?.length || 0}</span>
+                                        <span className="text-sm text-gray-400 mb-1">Detected events</span>
                                     </div>
                                 </div>
                             </div>
@@ -149,32 +183,32 @@ export default function CompetitorDetail() {
                                         </h2>
 
                                         <div className="space-y-6">
-                                            {/* Placeholder Timeline Items for Demo */}
-                                            <div className="flex gap-4">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
-                                                    <div className="w-0.5 h-full bg-gray-100 my-1"></div>
+                                            {isLoadingUpdates ? (
+                                                <div className="text-center py-8 text-gray-500">Loading intelligence...</div>
+                                            ) : updates?.length === 0 ? (
+                                                <div className="text-center py-8 text-gray-500">
+                                                    No recent updates detected. Click "Update Intelligence" to scan for new data.
                                                 </div>
-                                                <div className="pb-6">
-                                                    <span className="text-xs font-medium text-gray-500">2 days ago</span>
-                                                    <h4 className="font-bold text-gray-900 mt-1">New Pricing Tier Added</h4>
-                                                    <p className="text-gray-600 text-sm mt-1">They launched a new "Enterprise Plus" tier starting at $999/mo, targeting upmarket customers directly competing with our Pro plan.</p>
-                                                    <span className="inline-block mt-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">Pricing Strategy</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex gap-4">
-                                                <div className="flex flex-col items-center">
-                                                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                                                    <div className="w-0.5 h-full bg-gray-100 my-1"></div>
-                                                </div>
-                                                <div className="pb-6">
-                                                    <span className="text-xs font-medium text-gray-500">5 days ago</span>
-                                                    <h4 className="font-bold text-gray-900 mt-1">Hiring: VP of Sales (EMEA)</h4>
-                                                    <p className="text-gray-600 text-sm mt-1">Strong signal they are expanding into the European market aggressively.</p>
-                                                    <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Expansion</span>
-                                                </div>
-                                            </div>
+                                            ) : (
+                                                updates?.map((update: CompetitorUpdate, idx: number) => (
+                                                    <div key={idx} className="flex gap-4">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                                                            {idx !== updates.length - 1 && <div className="w-0.5 h-full bg-gray-100 my-1"></div>}
+                                                        </div>
+                                                        <div className="pb-6">
+                                                            <span className="text-xs font-medium text-gray-500">
+                                                                {new Date(update.created_at).toLocaleDateString()}
+                                                            </span>
+                                                            <h4 className="font-bold text-gray-900 mt-1">{update.title}</h4>
+                                                            <p className="text-gray-600 text-sm mt-1">{update.summary}</p>
+                                                            <span className={`inline-block mt-2 px-2 py-1 text-xs rounded ${getUpdateBadgeColor(update.update_type)}`}>
+                                                                {update.category || update.update_type}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
                                     </div>
 

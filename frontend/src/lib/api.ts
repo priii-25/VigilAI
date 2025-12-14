@@ -38,6 +38,8 @@ export const competitorsAPI = {
   delete: (id: number) => apiClient.delete(`/competitors/${id}`),
 
   triggerScrape: (id: number) => apiClient.post(`/competitors/${id}/scrape`),
+
+  getUpdates: (id: number) => apiClient.get(`/competitors/${id}/updates`),
 };
 
 // Battlecards API

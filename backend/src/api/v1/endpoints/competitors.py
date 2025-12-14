@@ -4,7 +4,7 @@ Competitor management endpoints
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 from src.core.database import get_db
 from src.core.security import get_current_user
@@ -32,6 +32,21 @@ class CompetitorResponse(BaseModel):
     description: str
     industry: str
     is_active: bool
+    
+    class Config:
+        from_attributes = True
+
+
+class CompetitorUpdateResponse(BaseModel):
+    id: int
+    competitor_id: int
+    update_type: str
+    category: Optional[str]
+    title: str
+    summary: Optional[str]
+    impact_score: float
+    source_url: Optional[str]
+    created_at: object  # Using object to handle datetime serialization automatically
     
     class Config:
         from_attributes = True
@@ -77,6 +92,32 @@ async def get_competitor(
         raise HTTPException(status_code=404, detail="Competitor not found")
     
     return competitor
+
+
+    return competitor
+
+
+@router.get("/{competitor_id}/updates", response_model=List[CompetitorUpdateResponse])
+async def list_competitor_updates(
+    competitor_id: int,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get updates for a competitor"""
+    # Verify competitor exists
+    result = await db.execute(select(Competitor).where(Competitor.id == competitor_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Competitor not found")
+        
+    # Get updates
+    result = await db.execute(
+        select(CompetitorUpdate)
+        .where(CompetitorUpdate.competitor_id == competitor_id)
+        .order_by(CompetitorUpdate.created_at.desc())
+        .limit(limit)
+    )
+    return result.scalars().all()
 
 
 @router.post("/{competitor_id}/scrape")

@@ -8,12 +8,27 @@ import Header from '@/components/layout/Header';
 import { Edit, Save, ArrowLeft, Trash2, Printer, Share2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+interface Battlecard {
+    id: number;
+    competitor_id: number;
+    competitor_name?: string;
+    title: string;
+    category: string;
+    overview: string;
+    kill_points: string[];
+    objection_handling: Record<string, string>;
+    strengths: string[];
+    weaknesses: string[];
+    updated_at: string;
+    notion_page_id?: string;
+}
+
 export default function BattlecardDetail() {
     const router = useRouter();
     const { id } = router.query;
     const queryClient = useQueryClient();
     const [isEditing, setIsEditing] = useState(false);
-    const [formData, setFormData] = useState<any>(null);
+    const [formData, setFormData] = useState<Battlecard | null>(null);
 
     const { data: battlecard, isLoading } = useQuery({
         queryKey: ['battlecard', id],
@@ -36,7 +51,7 @@ export default function BattlecardDetail() {
     }, [battlecard]);
 
     const updateMutation = useMutation({
-        mutationFn: (data: any) => battlecardsAPI.update(Number(id), data),
+        mutationFn: (data: Battlecard) => battlecardsAPI.update(Number(id), data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['battlecard', id] });
             setIsEditing(false);
@@ -47,8 +62,37 @@ export default function BattlecardDetail() {
         }
     });
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleShare = async () => {
+        const url = window.location.href;
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Battlecard: ${battlecard.title}`,
+                    text: `Check out this battlecard for ${battlecard.title}`,
+                    url,
+                });
+            } catch (err) {
+                // User cancelled or share failed
+                console.error('Share failed:', err);
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(url);
+                toast.success('Link copied to clipboard');
+            } catch (err) {
+                toast.error('Failed to copy link');
+            }
+        }
+    };
+
     const handleSave = () => {
-        updateMutation.mutate(formData);
+        if (formData) {
+            updateMutation.mutate(formData);
+        }
     };
 
     if (isLoading || !battlecard) {
@@ -90,10 +134,18 @@ export default function BattlecardDetail() {
                                 </button>
 
                                 <div className="flex items-center gap-3">
-                                    <button className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Print/Export">
+                                    <button
+                                        onClick={handlePrint}
+                                        className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg"
+                                        title="Print/Export"
+                                    >
                                         <Printer size={20} />
                                     </button>
-                                    <button className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Share">
+                                    <button
+                                        onClick={handleShare}
+                                        className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg"
+                                        title="Share"
+                                    >
                                         <Share2 size={20} />
                                     </button>
                                     {isEditing ? (
@@ -143,12 +195,13 @@ export default function BattlecardDetail() {
                                         </h2>
                                         {isEditing ? (
                                             <div className="space-y-3">
-                                                {formData.kill_points?.map((point: string, idx: number) => (
+                                                {formData?.kill_points?.map((point: string, idx: number) => (
                                                     <div key={idx} className="flex gap-2">
                                                         <input
                                                             type="text"
                                                             value={point}
                                                             onChange={(e) => {
+                                                                if (!formData) return;
                                                                 const newPoints = [...formData.kill_points];
                                                                 newPoints[idx] = e.target.value;
                                                                 setFormData({ ...formData, kill_points: newPoints });
@@ -157,6 +210,7 @@ export default function BattlecardDetail() {
                                                         />
                                                         <button
                                                             onClick={() => {
+                                                                if (!formData) return;
                                                                 const newPoints = formData.kill_points.filter((_: any, i: number) => i !== idx);
                                                                 setFormData({ ...formData, kill_points: newPoints });
                                                             }}
@@ -167,7 +221,10 @@ export default function BattlecardDetail() {
                                                     </div>
                                                 ))}
                                                 <button
-                                                    onClick={() => setFormData({ ...formData, kill_points: [...formData.kill_points, ''] })}
+                                                    onClick={() => {
+                                                        if (!formData) return;
+                                                        setFormData({ ...formData, kill_points: [...formData.kill_points, ''] });
+                                                    }}
                                                     className="text-primary-600 text-sm font-medium"
                                                 >
                                                     + Add Point
@@ -204,8 +261,7 @@ export default function BattlecardDetail() {
                                                                 className="w-full p-2 font-bold mb-2 border border-gray-300 rounded"
                                                                 placeholder="Objection..."
                                                                 onChange={(e) => {
-                                                                    // Complex object editing simplified for demo
-                                                                    // Ideally use a better structure or immutable helper
+                                                                    if (!formData) return;
                                                                     const newObj = { ...formData.objection_handling };
                                                                     delete newObj[objection];
                                                                     newObj[e.target.value] = response;
@@ -217,6 +273,7 @@ export default function BattlecardDetail() {
                                                                 className="w-full p-2 border border-gray-300 rounded"
                                                                 rows={3}
                                                                 onChange={(e) => {
+                                                                    if (!formData) return;
                                                                     const newObj = { ...formData.objection_handling };
                                                                     newObj[objection] = e.target.value;
                                                                     setFormData({ ...formData, objection_handling: newObj });
