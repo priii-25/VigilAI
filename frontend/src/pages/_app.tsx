@@ -11,9 +11,12 @@ const queryClient = new QueryClient({
   },
 });
 
+import { Toaster } from 'react-hot-toast';
+
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
       <Component {...pageProps} />
     </QueryClientProvider>
   );

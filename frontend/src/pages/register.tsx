@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
 import { authAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
@@ -11,27 +12,25 @@ export default function Register() {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
         setLoading(true);
 
         try {
             const response = await authAPI.register(email, password, fullName);
-            // Assuming register returns a token or we auto-login, otherwise redirect to login
-            // If the API returns a token immediately:
+
             if (response.data.access_token) {
                 setAuth({ email, role: 'user' }, response.data.access_token);
+                toast.success('Account created successfully!');
                 router.push('/');
             } else {
-                // If no token, maybe redirect to login with a message
+                toast.success('Account created! Please login.');
                 router.push('/login?registered=true');
             }
         } catch (err: any) {
-            setError(err.response?.data?.detail || 'Registration failed');
+            toast.error(err.response?.data?.detail || 'Registration failed');
         } finally {
             setLoading(false);
         }
@@ -51,11 +50,7 @@ export default function Register() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {error && (
-                            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
-                                {error}
-                            </div>
-                        )}
+
 
                         <div>
                             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">

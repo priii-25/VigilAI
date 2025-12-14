@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import { toast } from 'react-hot-toast';
 import { authAPI } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 
@@ -10,12 +11,10 @@ export default function Login() {
   const { setAuth } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
@@ -23,9 +22,10 @@ export default function Login() {
       const { access_token } = response.data;
 
       setAuth({ email, role: 'user' }, access_token);
+      toast.success('Logged in successfully');
       router.push('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      toast.error(err.response?.data?.detail || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -44,12 +44,8 @@ export default function Login() {
             <p className="text-gray-600 mt-2">Competitive Intelligence Platform</p>
           </div>
 
+
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
