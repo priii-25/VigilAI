@@ -17,10 +17,22 @@ interface Battlecard {
     overview: string;
     kill_points: string[];
     objection_handling: Record<string, string>;
+    id: number;
+    competitor_id: number;
+    title: string;
+    overview: string;
     strengths: string[];
     weaknesses: string[];
-    updated_at: string;
-    notion_page_id?: string;
+    kill_points: string[];
+    objections: Array<{ objection: string; response: string }>;
+    win_loss_analysis: {
+        win_rate: number;
+        common_reasons_won: string[];
+        common_reasons_lost: string[];
+    };
+    pricing_comparison: string;
+    is_published: boolean;
+    last_updated: string;
 }
 
 export default function BattlecardDetail() {
@@ -30,7 +42,7 @@ export default function BattlecardDetail() {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState<Battlecard | null>(null);
 
-    const { data: battlecard, isLoading } = useQuery({
+    const { data: fetchedBattlecard, isLoading } = useQuery<Battlecard>({
         queryKey: ['battlecard', id],
         queryFn: async () => {
             if (!id) return null;
@@ -51,7 +63,7 @@ export default function BattlecardDetail() {
     }, [battlecard]);
 
     const updateMutation = useMutation({
-        mutationFn: (data: Battlecard) => battlecardsAPI.update(Number(id), data),
+        mutationFn: (data: Partial<Battlecard>) => battlecardsAPI.update(Number(id), data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['battlecard', id] });
             setIsEditing(false);

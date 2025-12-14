@@ -21,12 +21,27 @@ interface CompetitorUpdate {
     created_at: string;
 }
 
+interface Competitor {
+    id: number;
+    name: string;
+    domain: string;
+    description: string;
+    industry: string;
+    is_active: boolean;
+    pricing_url: string;
+    careers_url: string;
+    blog_url: string;
+    extra_data: Record<string, any>;
+    created_at: string;
+    updated_at: string;
+}
+
 export default function CompetitorDetail() {
     const router = useRouter();
     const { id } = router.query;
     const queryClient = useQueryClient();
 
-    const { data: competitor, isLoading } = useQuery({
+    const { data: competitor, isLoading } = useQuery<Competitor>({
         queryKey: ['competitor', id],
         queryFn: async () => {
             if (!id) return null;
@@ -36,7 +51,7 @@ export default function CompetitorDetail() {
         enabled: !!id,
     });
 
-    const { data: updates, isLoading: isLoadingUpdates } = useQuery({
+    const { data: updates, isLoading: isLoadingUpdates } = useQuery<CompetitorUpdate[]>({
         queryKey: ['competitor-updates', id],
         queryFn: async () => {
             if (!id) return [];
@@ -83,6 +98,13 @@ export default function CompetitorDetail() {
         }
     };
 
+    // Helper to ensure URL has protocol
+    const ensureProtocol = (url: string) => {
+        if (!url) return '#';
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        return `https://${url}`;
+    };
+
     return (
         <>
             <Head>
@@ -115,7 +137,7 @@ export default function CompetitorDetail() {
                                         <div>
                                             <h1 className="text-3xl font-bold text-gray-900 mb-2">{competitor.name}</h1>
                                             <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                <a href={`https://${competitor.domain}`} target="_blank" className="flex items-center gap-1 hover:text-primary-600">
+                                                <a href={ensureProtocol(competitor.domain)} target="_blank" className="flex items-center gap-1 hover:text-primary-600">
                                                     <Globe size={14} />
                                                     {competitor.domain}
                                                 </a>
@@ -219,7 +241,7 @@ export default function CompetitorDetail() {
                                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                                         <h3 className="font-bold text-gray-900 mb-4">Monitored Assets</h3>
                                         <div className="space-y-3">
-                                            <a href={competitor.pricing_url} target="_blank" className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
+                                            <a href={ensureProtocol(competitor.pricing_url)} target="_blank" className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-white rounded border border-gray-200 text-green-600">
                                                         <TrendingUp size={16} />
@@ -232,7 +254,7 @@ export default function CompetitorDetail() {
                                                 <ExternalLink size={14} className="text-gray-400 group-hover:text-primary-600" />
                                             </a>
 
-                                            <a href={competitor.careers_url} target="_blank" className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
+                                            <a href={ensureProtocol(competitor.careers_url)} target="_blank" className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-white rounded border border-gray-200 text-blue-600">
                                                         <Briefcase size={16} />
@@ -245,7 +267,7 @@ export default function CompetitorDetail() {
                                                 <ExternalLink size={14} className="text-gray-400 group-hover:text-primary-600" />
                                             </a>
 
-                                            <a href={competitor.blog_url} target="_blank" className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
+                                            <a href={ensureProtocol(competitor.blog_url)} target="_blank" className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-white rounded border border-gray-200 text-purple-600">
                                                         <FileText size={16} />
