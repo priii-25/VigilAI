@@ -92,7 +92,7 @@ class StrategyDriftDetector:
         }
 
     async def _analyze_drift_reason(self, historical_texts: List[str], recent_texts: List[str]) -> Dict:
-        """Use AI to explain WHY the drift happened."""
+        """Use AI to explain WHY the drift happened with structured categories."""
         
         prompt = f"""
         Analyze the strategic shift in this competitor's messaging.
@@ -103,16 +103,40 @@ class StrategyDriftDetector:
         RECENT MESSAGING (Last 30 days):
         {self._format_texts(recent_texts)}
         
-        Identify:
-        1. What changed in their focus? (e.g., moved from Feature A to Feature B, or SMB to Enterprise)
-        2. New keywords or themes.
-        3. Strategic implication.
+        Identify and categorize the drift:
         
-        Format as JSON: {{ "shift_summary": "...", "key_changes": ["..."], "implication": "..." }}
+        1. **ICP Shift**: Did their Ideal Customer Profile change? (e.g., targeting different industries, company sizes)
+        2. **Segment Shift**: Did they move between market segments? (e.g., SMB → Mid-Market → Enterprise)
+        3. **Messaging Shift**: Did their core messaging strategy change? (e.g., Feature-led → Price-led → Value-led)
+        4. **Key Changes**: Specific new keywords, themes, or focus areas
+        5. **Strategic Implication**: What does this mean for us?
+        
+        Format as JSON:
+        {{
+            "icp_shift": {{
+                "detected": true/false,
+                "from": "previous ICP description",
+                "to": "new ICP description"
+            }},
+            "segment_shift": {{
+                "detected": true/false,
+                "from": "SMB/Mid-Market/Enterprise",
+                "to": "SMB/Mid-Market/Enterprise"
+            }},
+            "messaging_shift": {{
+                "detected": true/false,
+                "from": "Feature-led/Price-led/Value-led",
+                "to": "Feature-led/Price-led/Value-led"
+            }},
+            "key_changes": ["change1", "change2"],
+            "implication": "Strategic implication for our company",
+            "alert_headline": "One-line alert summary, e.g. 'Competitor X is pivoting to Enterprise healthcare'"
+        }}
         """
         
         try:
-            return await self.ai._call_gemini(prompt) # Helper will return text, might need parsing
+            response = await self.ai._call_gemini(prompt)
+            return self.ai._parse_json_response(response)
         except Exception as e:
             logger.error(f"Error analyzing drift reason: {e}")
             return {"error": "Could not analyze reason"}

@@ -51,25 +51,25 @@ export default function LandscapeMap({ data }: LandscapeMapProps) {
             legend: { display: false },
             title: {
                 display: true,
-                text: 'Competitive Landscape (Impact vs Innovation)'
+                text: 'Competitive Landscape (Feature Strength vs Pricing)'
             },
             tooltip: {
                 callbacks: {
                     label: (context: any) => {
                         const point = context.raw;
-                        return `${point.competitor || 'Unknown'}: Impact ${point.x}, Velocity ${point.y}`;
+                        return `${point.competitor || 'Unknown'}: Features ${point.x}, Price Tier ${point.y}`;
                     }
                 }
             }
         },
         scales: {
             x: {
-                title: { display: true, text: 'Market Presence (Impact Score)' },
+                title: { display: true, text: 'Feature Strength (0-100)' },
                 min: 0,
                 max: 100,
             },
             y: {
-                title: { display: true, text: 'Innovation Velocity (Updates/Mo)' },
+                title: { display: true, text: 'Pricing Position (Low → High)' },
                 min: 0,
                 max: 100,
             },

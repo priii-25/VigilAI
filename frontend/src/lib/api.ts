@@ -99,6 +99,14 @@ export const analyticsAPI = {
   getWinRates: () => apiClient.get('/analytics/win-rates'),
 
   getImpactScores: () => apiClient.get('/analytics/impact-scores'),
+
+  getLandscape: () => apiClient.get('/analytics/landscape'),
+
+  getStrategyDrift: (competitorId: number) =>
+    apiClient.get(`/analytics/strategy-drift/${competitorId}`),
+
+  runSimulation: (data: { competitor_name: string; scenario: string; context?: string }) =>
+    apiClient.post('/analytics/simulation', data),
 };
 
 export default apiClient;

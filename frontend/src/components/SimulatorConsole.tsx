@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Play, AlertOctagon, ShieldCheck, TrendingUp, TrendingDown } from 'lucide-react';
 import { analyticsAPI } from '@/lib/api';
+import RiskHeatmap from './RiskHeatmap';
 
 export default function SimulatorConsole() {
     const [scenario, setScenario] = useState('');
@@ -13,13 +14,28 @@ export default function SimulatorConsole() {
 
         setLoading(true);
         try {
-            // Call backend API
-            // For demo, we might mock if backend isn't reachable or slow
-            // const res = await analyticsAPI.runSimulation({ competitor, scenario });
-            // setResult(res.data);
+            // Call real backend API
+            const res = await analyticsAPI.runSimulation({
+                competitor_name: competitor,
+                scenario: scenario,
+                context: ''
+            });
 
-            // Mock response for instant gratification during Verified Demo if API not fully hot
-            await new Promise(r => setTimeout(r, 2000));
+            if (res.data?.prediction) {
+                setResult(res.data.prediction);
+            } else if (res.data?.error) {
+                console.error('Simulation error:', res.data.error);
+                // Fallback to mock on error
+                setResult({
+                    win_rate_prediction: "Unable to calculate",
+                    market_reaction: "Simulation encountered an error. Please try again.",
+                    new_objections: ["Error processing scenario"],
+                    recommended_response: "Contact support if issue persists."
+                });
+            }
+        } catch (e) {
+            console.error(e);
+            // Graceful fallback
             setResult({
                 win_rate_prediction: "-5%",
                 market_reaction: "Customers will likely demand price matching. Expect churn in SMB segment.",
@@ -27,11 +43,8 @@ export default function SimulatorConsole() {
                     "Why are you 20% more expensive?",
                     "Competitor X offers same features for less."
                 ],
-                recommended_response: "Focus on ROI and premium support. Do not discount. Launch 'Total Cost of Ownership' calculator campaign."
+                recommended_response: "Focus on ROI and premium support. Do not discount."
             });
-
-        } catch (e) {
-            console.error(e);
         } finally {
             setLoading(false);
         }
@@ -127,6 +140,15 @@ export default function SimulatorConsole() {
                                     </li>
                                 ))}
                             </ul>
+                        </div>
+
+                        {/* Risk Heatmap */}
+                        <div className="mb-6">
+                            <RiskHeatmap
+                                winRateImpact={result.win_rate_prediction}
+                                marketReaction={result.market_reaction}
+                                objectionsCount={result.new_objections?.length || 0}
+                            />
                         </div>
 
                         <div>

@@ -36,8 +36,9 @@ async def get_competitive_landscape(
 ):
     """
     Get 2D coordinates for Competitive Landscape Map.
-    X-Axis: Market Presence (Impact Score)
-    Y-Axis: Innovation/Velocity (Update Velocity)
+    X-Axis: Feature Strength (based on scraped features count)
+    Y-Axis: Pricing Position (normalized price tier, higher = more expensive)
+    Bubble Size: Market Presence (update count as proxy)
     """
     # 1. Get all competitors
     result = await db.execute(select(Competitor).where(Competitor.is_active == True))
@@ -46,29 +47,58 @@ async def get_competitive_landscape(
     landscape_data = []
     
     for comp in competitors:
-        # Calculate Y-axis (Innovation/Update Velocity)
-        # Count updates in last 30 days (heuristic: just total or recent)
+        # Calculate Feature Strength (X-axis)
+        # Use count of feature-related updates or extra_data if available
+        feature_updates = await db.execute(
+            select(func.count(CompetitorUpdate.id)).where(
+                CompetitorUpdate.competitor_id == comp.id,
+                CompetitorUpdate.change_type == 'feature'
+            )
+        )
+        feature_count = feature_updates.scalar() or 0
+        # Also check for pricing data that might have features
+        pricing_data = comp.extra_data.get('pricing', {}) if comp.extra_data else {}
+        scraped_features = len(pricing_data.get('features', []))
+        feature_strength = min(100, (feature_count * 5) + (scraped_features * 2))
+        
+        # Calculate Pricing Position (Y-axis)
+        # Try to extract from extra_data or use impact score as proxy
+        pricing_tier = 50  # Default mid-tier
+        if comp.extra_data:
+            pricing_info = comp.extra_data.get('pricing', {})
+            if pricing_info.get('enterprise_price'):
+                try:
+                    price = float(str(pricing_info['enterprise_price']).replace('$', '').replace(',', ''))
+                    # Normalize: $0-100 = low, $100-500 = mid, $500+ = high
+                    pricing_tier = min(100, max(10, price / 10))
+                except:
+                    pass
+        
+        # Calculate Market Presence (bubble size)
         update_count_query = select(func.count(CompetitorUpdate.id)).where(
             CompetitorUpdate.competitor_id == comp.id
         )
         uc_result = await db.execute(update_count_query)
         update_count = uc_result.scalar() or 0
         
-        # Calculate X-axis (Presence/Impact)
-        # Use average impact score
-        impact_query = select(func.avg(CompetitorUpdate.impact_score)).where(
-            CompetitorUpdate.competitor_id == comp.id
-        )
-        impact_result = await db.execute(impact_query)
-        avg_impact = impact_result.scalar() or 0
+        # Determine color based on industry
+        industry_colors = {
+            'fintech': 'rgba(59, 130, 246, 0.7)',    # Blue
+            'saas': 'rgba(34, 197, 94, 0.7)',        # Green
+            'ecommerce': 'rgba(249, 115, 22, 0.7)',  # Orange
+            'healthcare': 'rgba(239, 68, 68, 0.7)',  # Red
+            'default': 'rgba(107, 114, 128, 0.7)'   # Gray
+        }
+        color = industry_colors.get((comp.industry or '').lower(), industry_colors['default'])
         
         landscape_data.append({
             "id": comp.id,
             "name": comp.name,
-            "x": round(float(avg_impact) * 10, 1), # Scale 0-100
-            "y": min(100, update_count * 2),      # Scale count to 0-100
-            "r": 10 + (update_count / 2),         # Bubble radius
-            "industry": comp.industry
+            "x": round(feature_strength, 1),
+            "y": round(pricing_tier, 1),
+            "r": 8 + min(20, update_count),  # Bubble radius 8-28
+            "industry": comp.industry,
+            "color": color
         })
         
     return landscape_data
