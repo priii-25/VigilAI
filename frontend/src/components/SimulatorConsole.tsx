@@ -1,13 +1,28 @@
 import { useState } from 'react';
-import { Play, AlertOctagon, ShieldCheck, TrendingUp, TrendingDown } from 'lucide-react';
-import { analyticsAPI } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { Play, AlertOctagon, ShieldCheck, TrendingDown } from 'lucide-react';
+import { analyticsAPI, competitorsAPI } from '@/lib/api';
 import RiskHeatmap from './RiskHeatmap';
+
+interface Competitor {
+    id: number;
+    name: string;
+}
 
 export default function SimulatorConsole() {
     const [scenario, setScenario] = useState('');
     const [competitor, setCompetitor] = useState('');
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
+
+    // Fetch real competitors from database
+    const { data: competitors } = useQuery<Competitor[]>({
+        queryKey: ['competitors-list'],
+        queryFn: async () => {
+            const response = await competitorsAPI.list();
+            return response.data;
+        },
+    });
 
     const handleRunSimulation = async () => {
         if (!scenario || !competitor) return;
@@ -25,7 +40,6 @@ export default function SimulatorConsole() {
                 setResult(res.data.prediction);
             } else if (res.data?.error) {
                 console.error('Simulation error:', res.data.error);
-                // Fallback to mock on error
                 setResult({
                     win_rate_prediction: "Unable to calculate",
                     market_reaction: "Simulation encountered an error. Please try again.",
@@ -35,15 +49,11 @@ export default function SimulatorConsole() {
             }
         } catch (e) {
             console.error(e);
-            // Graceful fallback
             setResult({
-                win_rate_prediction: "-5%",
-                market_reaction: "Customers will likely demand price matching. Expect churn in SMB segment.",
-                new_objections: [
-                    "Why are you 20% more expensive?",
-                    "Competitor X offers same features for less."
-                ],
-                recommended_response: "Focus on ROI and premium support. Do not discount."
+                win_rate_prediction: "Error",
+                market_reaction: "Could not connect to simulation engine.",
+                new_objections: ["Network or server error"],
+                recommended_response: "Check your connection and try again."
             });
         } finally {
             setLoading(false);
@@ -68,14 +78,14 @@ export default function SimulatorConsole() {
                             onChange={(e) => setCompetitor(e.target.value)}
                         >
                             <option value="">SELECT TARGET...</option>
-                            <option value="Stripe">Stripe</option>
-                            <option value="Adyen">Adyen</option>
-                            <option value="PayPal">PayPal</option>
+                            {competitors?.map((c) => (
+                                <option key={c.id} value={c.name}>{c.name}</option>
+                            ))}
                         </select>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-mono text-gray-400 mb-2 uppercase">Scanning Scenario (What If?)</label>
+                        <label className="block text-xs font-mono text-gray-400 mb-2 uppercase">Scenario (What If?)</label>
                         <textarea
                             className="w-full bg-gray-800 border border-gray-700 rounded p-3 text-white h-32 focus:ring-2 focus:ring-red-500 focus:outline-none font-mono text-sm"
                             placeholder="E.g., Competitor drops pricing by 20% for Enterprise tier..."
@@ -112,7 +122,7 @@ export default function SimulatorConsole() {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide">Prediction Results</h3>
-                            <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">CONFIDENCE: HIGH</span>
+                            <span className="px-3 py-1 bg-red-100 text-red-800 text-xs font-bold rounded">AI POWERED</span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -124,7 +134,9 @@ export default function SimulatorConsole() {
                             </div>
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <label className="text-xs font-medium text-gray-500 uppercase">Risk Level</label>
-                                <div className="text-2xl font-bold text-gray-900 mt-1">CRITICAL</div>
+                                <div className="text-2xl font-bold text-gray-900 mt-1">
+                                    {result.win_rate_prediction?.includes('-') ? 'CRITICAL' : 'MODERATE'}
+                                </div>
                             </div>
                         </div>
 
@@ -134,7 +146,7 @@ export default function SimulatorConsole() {
                                 "{result.market_reaction}"
                             </div>
                             <ul className="mt-3 space-y-2">
-                                {result.new_objections.map((obj: string, i: number) => (
+                                {result.new_objections?.map((obj: string, i: number) => (
                                     <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
                                         <span className="text-red-500 font-bold">!</span> {obj}
                                     </li>

@@ -7,6 +7,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { RefreshCw, ExternalLink, Globe, FileText, Briefcase, TrendingUp, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import StrategyDriftChart from '@/components/StrategyDriftChart';
 
 
 interface CompetitorUpdate {
@@ -283,6 +284,10 @@ export default function CompetitorDetail() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        {/* Strategy Drift Analysis */}
+                        <div className="mt-8">
+                            <StrategyDriftChart competitorId={Number(id)} />
                         </div>
                     </main>
                 </div>
