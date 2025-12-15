@@ -112,7 +112,7 @@ export default function SimulatorConsole() {
             </div>
 
             {/* Output / Results */}
-            <div className="card h-full bg-white border-l-4 border-l-red-500 relative overflow-hidden">
+            <div className="card bg-white border-l-4 border-l-red-500 relative overflow-auto max-h-[80vh]">
                 {!result ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50">
                         <ShieldCheck size={64} className="mb-4" />

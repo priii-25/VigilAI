@@ -67,48 +67,27 @@ class ReviewMonitor:
             logger.error(f"Error searching reviews: {e}")
             return []
 
-    def get_mock_review_data(self, competitor_name: str) -> List[ReviewSummary]:
-        """
-        Returns mock data for demonstration if live scraping is blocked.
-        This is critical for the UI to show *something* during the demo.
-        """
-        return [
-            ReviewSummary(
-                source='G2',
-                competitor_name=competitor_name,
-                title=f"{competitor_name} High Performer Spring 2025",
-                rating=4.5,
-                summary="Users praise the new UI but complain about pricing tiers.",
-                url=f"https://www.g2.com/products/{competitor_name.lower()}/reviews",
-                detected_at=datetime.utcnow()
-            ),
-             ReviewSummary(
-                source='Gartner',
-                competitor_name=competitor_name,
-                title=f"{competitor_name} added to Magic Quadrant",
-                rating=4.2,
-                summary="Recognized as a Challenger in the latest report.",
-                url=f"https://www.gartner.com/reviews/market/{competitor_name.lower()}",
-                detected_at=datetime.utcnow()
-            )
-        ]
+    # Mock function removed - production code returns empty if no data available
 
     def monitor_competitor(self, competitor_name: str) -> Dict[str, Any]:
         """
         Aggregates review data for a competitor.
+        Returns empty results if no data available (no mock fallback).
         """
         reviews = []
         
-        # 1. Try safe scraping (placeholder)
+        # Try safe scraping via Google search
         reviews.extend(self.search_reviews_via_google(competitor_name, "G2"))
+        reviews.extend(self.search_reviews_via_google(competitor_name, "Gartner"))
         
-        # 2. If empty (likely blocked), fall back to mock data for the demo experience
         if not reviews:
-            reviews = self.get_mock_review_data(competitor_name)
+            logger.info(f"No review data available for {competitor_name} - G2/Gartner require API access")
             
         return {
             'competitor': competitor_name,
             'total_reviews_detected': len(reviews),
             'reviews': [r.to_dict() for r in reviews],
+            'data_available': len(reviews) > 0,
+            'note': 'G2/Gartner reviews require official API access for reliable data' if not reviews else None,
             'timestamp': datetime.utcnow().isoformat()
         }
