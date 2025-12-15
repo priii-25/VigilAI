@@ -5,7 +5,6 @@ Replacement of Pinecone with ChromaDB (Local & Free)
 from typing import Dict, List, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-# from sentence_transformers import SentenceTransformer # Removed due to dependency issues
 import google.generativeai as genai
 import numpy as np
 from loguru import logger
