@@ -18,6 +18,7 @@ export default function Sidebar() {
     { href: '/battlecards', icon: FileText, label: 'Battlecards' },
     { href: '/logs', icon: AlertCircle, label: 'Log Analysis' },
     { href: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { href: '/simulation', icon: Target, label: 'War Room' },
   ];
 
   return (
@@ -26,21 +27,20 @@ export default function Sidebar() {
         <h1 className="text-2xl font-bold">VigilAI</h1>
         <p className="text-gray-400 text-sm mt-1">Intelligence Platform</p>
       </div>
-      
+
       <nav className="flex-1 px-4 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = router.pathname === item.href;
-          
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-300 hover:bg-gray-800'
-              }`}
+                }`}
             >
               <Icon size={20} />
               <span>{item.label}</span>
@@ -48,7 +48,7 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      
+
       <div className="p-4">
         <button
           onClick={handleLogout}

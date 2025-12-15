@@ -1,13 +1,90 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import Any, List
+from typing import Any, List, Dict
+from pydantic import BaseModel
 
 from src.core.database import get_db
-from src.models.competitor import Competitor
+from src.core.security import get_current_user
+from src.models.competitor import Competitor, CompetitorUpdate
 from src.models.battlecard import Battlecard
 
+# Advanced Intelligence Services
+from src.services.ai.drift_detector import StrategyDriftDetector
+from src.services.ai.simulator import ScenarioSimulator
+
 router = APIRouter()
+
+class SimulationRequest(BaseModel):
+    competitor_name: str
+    scenario: str
+    context: str = ""
+
+@router.get("/strategy-drift/{competitor_id}")
+async def get_strategy_drift(
+    competitor_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Detect strategic drift for a competitor"""
+    detector = StrategyDriftDetector()
+    return await detector.detect_drift(competitor_id)
+
+@router.get("/landscape")
+async def get_competitive_landscape(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get 2D coordinates for Competitive Landscape Map.
+    X-Axis: Market Presence (Impact Score)
+    Y-Axis: Innovation/Velocity (Update Velocity)
+    """
+    # 1. Get all competitors
+    result = await db.execute(select(Competitor).where(Competitor.is_active == True))
+    competitors = result.scalars().all()
+    
+    landscape_data = []
+    
+    for comp in competitors:
+        # Calculate Y-axis (Innovation/Update Velocity)
+        # Count updates in last 30 days (heuristic: just total or recent)
+        update_count_query = select(func.count(CompetitorUpdate.id)).where(
+            CompetitorUpdate.competitor_id == comp.id
+        )
+        uc_result = await db.execute(update_count_query)
+        update_count = uc_result.scalar() or 0
+        
+        # Calculate X-axis (Presence/Impact)
+        # Use average impact score
+        impact_query = select(func.avg(CompetitorUpdate.impact_score)).where(
+            CompetitorUpdate.competitor_id == comp.id
+        )
+        impact_result = await db.execute(impact_query)
+        avg_impact = impact_result.scalar() or 0
+        
+        landscape_data.append({
+            "id": comp.id,
+            "name": comp.name,
+            "x": round(float(avg_impact) * 10, 1), # Scale 0-100
+            "y": min(100, update_count * 2),      # Scale count to 0-100
+            "r": 10 + (update_count / 2),         # Bubble radius
+            "industry": comp.industry
+        })
+        
+    return landscape_data
+
+@router.post("/simulation")
+async def run_simulation(
+    request: SimulationRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Run competitive war game simulation"""
+    simulator = ScenarioSimulator()
+    return await simulator.run_simulation(
+        competitor_name=request.competitor_name,
+        scenario_description=request.scenario,
+        user_context=request.context
+    )
 
 @router.get("/metrics")
 async def get_metrics(db: AsyncSession = Depends(get_db)) -> Any:

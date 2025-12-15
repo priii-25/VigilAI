@@ -5,6 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { TrendingUp, TrendingDown, Users, Target, Award, Activity, BarChart3, Eye } from 'lucide-react';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import LandscapeMap from '@/components/LandscapeMap';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -236,6 +237,10 @@ export default function Analytics() {
                       }}
                     />
                   </div>
+                </div>
+                {/* Competitive Landscape Map */}
+                <div className="card">
+                  <LandscapeMap />
                 </div>
               </div>
 

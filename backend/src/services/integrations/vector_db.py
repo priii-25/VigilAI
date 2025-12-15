@@ -5,7 +5,8 @@ Replacement of Pinecone with ChromaDB (Local & Free)
 from typing import Dict, List, Optional
 import chromadb
 from chromadb.config import Settings as ChromaSettings
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer # Removed due to dependency issues
+import google.generativeai as genai
 import numpy as np
 from loguru import logger
 from src.core.config import settings
@@ -20,14 +21,17 @@ class VectorDBService:
     def __init__(self):
         self.persist_directory = settings.VECTOR_DB_PATH
         self.collection_name = "vigilai_competitors"
-        self.model = None
+        self.model = None # Not used
         self.client = None
         self.collection = None
+        
+        # Configure Gemini
+        genai.configure(api_key=settings.GOOGLE_API_KEY)
         
         self._initialize()
     
     def _initialize(self):
-        """Initialize ChromaDB and embedding model"""
+        """Initialize ChromaDB"""
         try:
             # Ensure directory exists
             os.makedirs(self.persist_directory, exist_ok=True)
@@ -41,10 +45,6 @@ class VectorDBService:
                 metadata={"hnsw:space": "cosine"}
             )
             
-            # Load embedding model
-            logger.info("Loading embedding model...")
-            self.model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
-            
             logger.info("Vector database (ChromaDB) initialized successfully")
             
         except Exception as e:
@@ -53,16 +53,17 @@ class VectorDBService:
             self.collection = None
     
     def embed_text(self, text: str) -> List[float]:
-        """Convert text to vector embedding"""
-        if not self.model:
-            logger.warning("Embedding model not initialized")
-            return []
-        
+        """Convert text to vector embedding using Gemini"""
         try:
-            embedding = self.model.encode(text, convert_to_numpy=True)
-            return embedding.tolist()
+            # text-embedding-004 is current standard
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=text,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
         except Exception as e:
-            logger.error(f"Error generating embedding: {str(e)}")
+            logger.error(f"Error generating embedding with Gemini: {str(e)}")
             return []
     
     def store_competitor_data(
@@ -317,5 +318,40 @@ class VectorDBService:
         except Exception as e:
             logger.error(f"Error getting vector DB stats: {str(e)}")
             return {"status": "error", "message": str(e)}
+
+    def fetch_vectors(
+        self,
+        competitor_id: int,
+        limit: int = 100
+    ) -> List[Dict]:
+        """
+        Fetch raw vectors and metadata for a competitor.
+        Used for drift detection analysis.
+        """
+        if not self.collection:
+            return []
+            
+        try:
+            results = self.collection.get(
+                where={"competitor_id": competitor_id},
+                limit=limit,
+                include=["embeddings", "metadatas", "documents"]
+            )
+            
+            formatted = []
+            if results['ids']:
+                for i in range(len(results['ids'])):
+                    formatted.append({
+                        'id': results['ids'][i],
+                        'embedding': results['embeddings'][i],
+                        'metadata': results['metadatas'][i],
+                        'content': results['documents'][i]
+                    })
+            
+            return formatted
+            
+        except Exception as e:
+            logger.error(f"Error fetching vectors: {str(e)}")
+            return []
 
 # No longer need LocalVectorDB fallback as ChromaDB is local
