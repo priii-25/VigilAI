@@ -1,5 +1,5 @@
 {
-    "name": "VigilAI Competitor Monitoring Workflow",
+    "name": "VigilAI Competitor Monitoring",
     "nodes": [
         {
             "parameters": {
@@ -7,103 +7,105 @@
                     "interval": [
                         {
                             "field": "hours",
-                            "hoursInterval": 4
+                            "triggerAtHour": 9
                         }
                     ]
                 }
             },
-            "name": "Schedule Trigger",
-            "type": "n8n-nodes-base.scheduleTrigger",
+            "name": "Schedule (9 AM)",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
             "position": [
-                250,
+                100,
                 300
             ]
         },
         {
             "parameters": {
                 "url": "http://backend:8000/api/v1/competitors/",
-                "options": {}
+                "method": "GET",
+                "authentication": "none"
             },
             "name": "Get Competitors",
             "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
             "position": [
-                450,
+                300,
                 300
             ]
         },
         {
             "parameters": {
-                "functionCode": "// Loop through competitors and trigger scrape\nconst competitors = $input.all();\nconst results = [];\n\nfor (const item of competitors) {\n  results.push({\n    json: {\n      competitor_id: item.json.id,\n      name: item.json.name,\n      domain: item.json.domain\n    }\n  });\n}\n\nreturn results;"
-            },
-            "name": "Prepare Scrape Jobs",
-            "type": "n8n-nodes-base.function",
-            "position": [
-                650,
-                300
-            ]
-        },
-        {
-            "parameters": {
-                "url": "=http://backend:8000/api/v1/competitors/{{ $json.competitor_id }}/scrape",
-                "method": "POST",
+                "batchSize": 1,
                 "options": {}
+            },
+            "name": "Split In Batches",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/competitors/{{$node[\"Split In Batches\"].json[\"id\"]}}/scrape",
+                "method": "POST",
+                "authentication": "none"
             },
             "name": "Trigger Scrape",
             "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
             "position": [
-                850,
+                700,
                 300
             ]
         },
         {
             "parameters": {
-                "conditions": {
-                    "boolean": [
-                        {
-                            "value1": "={{ $json.has_changes }}",
-                            "value2": true
-                        }
-                    ]
-                }
+                "amount": 2,
+                "unit": "minutes"
             },
-            "name": "Has Changes?",
-            "type": "n8n-nodes-base.if",
+            "name": "Wait for Scrape",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
             "position": [
-                1050,
+                900,
                 300
             ]
         },
         {
             "parameters": {
-                "url": "http://backend:8000/api/v1/battlecards/generate",
-                "method": "POST",
-                "body": {
-                    "competitor_id": "={{ $json.competitor_id }}"
-                },
-                "options": {}
+                "url": "=http://backend:8000/api/v1/competitors/{{$node[\"Split In Batches\"].json[\"id\"]}}/updates?limit=5",
+                "method": "GET",
+                "authentication": "none"
             },
-            "name": "Update Battlecard",
+            "name": "Get Recent Updates",
             "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
             "position": [
-                1250,
-                200
+                1100,
+                300
             ]
         },
         {
             "parameters": {
-                "channel": "#competitive-intel",
-                "text": "=🔔 Competitor Update: {{ $json.name }}\n\nChanges detected:\n{{ $json.change_summary }}\n\nImpact: {{ $json.impact_score }}/10"
+                "channel": "competitive-intel",
+                "text": "=🚀 *Scrape Complete for {{$node[\"Split In Batches\"].json[\"name\"]}}*\n\nFound {{$json.length}} updates.",
+                "attachments": [],
+                "otherOptions": {}
             },
-            "name": "Notify Slack",
+            "name": "Slack Notification",
             "type": "n8n-nodes-base.slack",
+            "typeVersion": 1,
             "position": [
-                1250,
-                400
+                1300,
+                300
             ]
         }
     ],
     "connections": {
-        "Schedule Trigger": {
+        "Schedule (9 AM)": {
             "main": [
                 [
                     {
@@ -118,14 +120,14 @@
             "main": [
                 [
                     {
-                        "node": "Prepare Scrape Jobs",
+                        "node": "Split In Batches",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Prepare Scrape Jobs": {
+        "Split In Batches": {
             "main": [
                 [
                     {
@@ -140,34 +142,34 @@
             "main": [
                 [
                     {
-                        "node": "Has Changes?",
+                        "node": "Wait for Scrape",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Has Changes?": {
+        "Wait for Scrape": {
             "main": [
                 [
                     {
-                        "node": "Update Battlecard",
+                        "node": "Get Recent Updates",
                         "type": "main",
                         "index": 0
                     }
-                ],
+                ]
+            ]
+        },
+        "Get Recent Updates": {
+            "main": [
                 [
                     {
-                        "node": "Notify Slack",
+                        "node": "Slack Notification",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         }
-    },
-    "settings": {
-        "saveExecutionProgress": true,
-        "saveDataErrorExecution": "all"
     }
 }

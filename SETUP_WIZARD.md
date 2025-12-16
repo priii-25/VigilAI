@@ -69,6 +69,26 @@ Connect VigilAI to where your team works.
 
 ---
 
+## 🤖 Priority 3: Automation (N8N)
+
+VigilAI uses n8n to orchestrate scheduled scraping.
+
+1.  **Access n8n**: Open [http://localhost:5678](http://localhost:5678).
+    *   Login: `admin` / `admin` (or check docker-compose env).
+2.  **Import Workflow**:
+    *   Click **Workflows** menu.
+    *   Select **Import**.
+    *   Choose file: `vigilai/n8n/vigilai_workflow.json`.
+3.  **Activate**: Toggle "Active" to ON.
+
+**What it does**:
+*   Every morning at 9 AM, it fetches your competitors.
+*   One by one, it triggers a deep scrape.
+*   The backend (VigilAI) processes the data and sends **Slack Alerts** if new insights are found!
+
+
+---
+
 ## 🏁 Verification
 
 Once you have added these to your `.env` file, restart your backend:
