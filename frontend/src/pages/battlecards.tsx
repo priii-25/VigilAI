@@ -269,7 +269,8 @@ function BattlecardCreateModal({ onClose }: any) {
     mutationFn: (data: any) => battlecardsAPI.create(data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['battlecards'] });
-      router.push(`/battlecards/${response.data.id}/edit`);
+      onClose();
+      router.push(`/battlecards/${response.data.id}`);
     },
   });
 
