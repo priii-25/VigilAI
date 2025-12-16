@@ -10,7 +10,7 @@ export default function SimulationPage() {
                 <title>War Room Simulator - VigilAI</title>
             </Head>
 
-            <div className="flex h-screen bg-gray-100">
+            <div className="flex h-screen bg-gradient-to-br from-gray-50 via-primary-50/20 to-accent-50/20">
                 <Sidebar />
 
                 <div className="flex-1 flex flex-col overflow-hidden">

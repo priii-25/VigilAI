@@ -156,7 +156,7 @@ async def get_metrics(db: AsyncSession = Depends(get_db)) -> Any:
     recent_activity = []
     for update in recent_updates_list:
         recent_activity.append({
-            "type": update.change_type or "update",
+            "type": update.update_type or "update",
             "title": update.title or "Competitor Update",
             "description": (update.summary or "")[:100],
             "timestamp": update.created_at.isoformat() if update.created_at else None,

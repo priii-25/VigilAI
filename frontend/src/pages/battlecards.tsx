@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { battlecardsAPI } from '@/lib/api';
+import { battlecardsAPI, competitorsAPI } from '@/lib/api';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Sidebar from '@/components/layout/Sidebar';
@@ -260,8 +260,8 @@ function BattlecardCreateModal({ onClose }: any) {
   const { data: competitors } = useQuery({
     queryKey: ['competitors'],
     queryFn: async () => {
-      const response = await fetch('/api/competitors');
-      return response.json();
+      const response = await competitorsAPI.list();
+      return response.data;
     },
   });
 
@@ -276,15 +276,19 @@ function BattlecardCreateModal({ onClose }: any) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Transform objections to object format
+    // Transform objections to list of dicts format (backend expects List[dict])
     const objection_handling = formData.objections
       .filter(o => o.objection && o.response)
-      .reduce((acc, o) => ({ ...acc, [o.objection]: o.response }), {});
+      .map(o => ({ objection: o.objection, response: o.response }));
 
     createMutation.mutate({
-      ...formData,
+      title: formData.title,
+      competitor_id: parseInt(formData.competitor_id, 10),
       kill_points: formData.kill_points.filter(p => p.trim()),
       objection_handling,
+      overview: '',
+      strengths: [],
+      weaknesses: [],
     });
   };
 

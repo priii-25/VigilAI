@@ -6,10 +6,11 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import RecentActivity from '@/components/dashboard/RecentActivity';
+import { Sparkles } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -26,6 +27,13 @@ export default function Home() {
     return null;
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
     <>
       <Head>
@@ -33,21 +41,28 @@ export default function Home() {
         <meta name="description" content="Automated competitive intelligence and AIOps platform" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
-      
-      <div className="flex h-screen bg-gray-100">
+
+      <div className="flex h-screen bg-gradient-to-br from-gray-50 via-primary-50/20 to-accent-50/20">
         <Sidebar />
-        
+
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
-          
+
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">
-              <h1 className="text-3xl font-bold text-gray-900 mb-6">
-                Dashboard
-              </h1>
-              
+              {/* Welcome Section */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-2">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {getGreeting()}, {user?.email?.split('@')[0] || 'there'}
+                  </h1>
+                  <Sparkles className="text-primary-500" size={24} />
+                </div>
+                <p className="text-gray-500">Here's what's happening with your competitive landscape</p>
+              </div>
+
               <DashboardStats />
-              
+
               <div className="mt-8">
                 <RecentActivity />
               </div>
