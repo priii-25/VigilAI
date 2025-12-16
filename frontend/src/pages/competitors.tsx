@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { Plus, Trash2, Edit, RefreshCw, ExternalLink, TrendingUp, Eye } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 export default function Competitors() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function Competitors() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCompetitor, setEditingCompetitor] = useState(null);
 
+  // Fetch competitors
   const { data: competitors, isLoading } = useQuery({
     queryKey: ['competitors'],
     queryFn: async () => {
@@ -21,31 +23,71 @@ export default function Competitors() {
     },
   });
 
+  // Scrape mutation
   const scrapeCompetitorMutation = useMutation({
     mutationFn: (competitorId: number) => competitorsAPI.triggerScrape(competitorId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competitors'] });
-      alert('Scraping initiated successfully!');
     },
   });
 
+  // Delete mutation
   const deleteCompetitorMutation = useMutation({
     mutationFn: (competitorId: number) => competitorsAPI.delete(competitorId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['competitors'] });
+      toast.success('Competitor deleted successfully');
     },
+    onError: () => {
+      toast.error('Failed to delete competitor');
+    }
   });
 
   const handleScrape = (competitorId: number) => {
-    if (confirm('Start scraping this competitor?')) {
-      scrapeCompetitorMutation.mutate(competitorId);
-    }
+    toast.promise(
+      scrapeCompetitorMutation.mutateAsync(competitorId),
+      {
+        loading: 'Starting scraping job...',
+        success: 'Scraping initiated successfully!',
+        error: 'Failed to start scraping',
+      },
+      {
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+      }
+    );
   };
 
   const handleDelete = (competitorId: number, name: string) => {
-    if (confirm(`Delete ${name}? This cannot be undone.`)) {
-      deleteCompetitorMutation.mutate(competitorId);
-    }
+    // Custom toast for delete confirmation
+    toast((t) => (
+      <div className="flex flex-col gap-2">
+        <span className="font-medium">Delete {name}?</span>
+        <span className="text-sm text-gray-500">This action cannot be undone.</span>
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => {
+              deleteCompetitorMutation.mutate(competitorId);
+              toast.dismiss(t.id);
+            }}
+            className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+          >
+            Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: 5000,
+      position: 'top-center',
+    });
   };
 
   return (
