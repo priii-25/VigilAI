@@ -8,8 +8,19 @@ from dotenv import load_dotenv
 project_root = Path(__file__).parent.parent
 load_dotenv(project_root / ".env")
 
-def print_status(name, status, details=""):
-    icon = "✅" if status else "❌"
+def check_val(val):
+    """Check if value is present and not a placeholder"""
+    if not val:
+        return False
+    # Check for common placeholder patterns
+    if "your_" in val.lower() or "placeholder" in val.lower():
+        return False
+    return True
+
+def print_status(name, val, details=""):
+    is_valid = check_val(val)
+    icon = "✅" if is_valid else "❌"
+    # Mask actual value if printed (not printing here for security, just bool check passed)
     print(f"{icon} {name:<20} {details}")
 
 def check_integrations():
@@ -17,25 +28,25 @@ def check_integrations():
     print("-" * 50)
     
     # Check AI APIs
-    print_status("OpenAI", bool(os.getenv("OPENAI_API_KEY")))
-    print_status("Anthropic", bool(os.getenv("ANTHROPIC_API_KEY")))
-    # Perplexity removed (using free Google News)
-    print_status("Google Gemini", bool(os.getenv("GOOGLE_API_KEY")), "(Used for Log Analysis)")
+    print_status("Google Gemini", os.getenv("GOOGLE_API_KEY"), "(Primary AI Engine)")
     
     print("-" * 50)
     
     # Check Integrations
-    print_status("Notion API", bool(os.getenv("NOTION_API_KEY")), "(Required for Battlecard Publishing)")
-    print_status("Notion DB ID", bool(os.getenv("NOTION_DATABASE_ID")))
+    print_status("Notion API", os.getenv("NOTION_API_KEY"), "(Battlecards)")
+    print_status("Notion DB ID", os.getenv("NOTION_DATABASE_ID"))
     
-    print_status("Slack Bot Token", bool(os.getenv("SLACK_BOT_TOKEN")), "(Required for Alerts)")
-    print_status("Slack Channel", bool(os.getenv("SLACK_CHANNEL_ID")))
+    print_status("Slack Bot Token", os.getenv("SLACK_BOT_TOKEN"), "(Alerts)")
+    print_status("Slack Channel", os.getenv("SLACK_CHANNEL_ID"))
+    
+    print_status("Salesforce Client", os.getenv("SALESFORCE_CLIENT_ID"), "(CRM Integration)")
+    print_status("Salesforce User", os.getenv("SALESFORCE_USERNAME"))
     
     print("-" * 50)
     
     # Check Infrastructure
-    print_status("Database URL", bool(os.getenv("DATABASE_URL")))
-    print_status("Redis URL", bool(os.getenv("REDIS_URL")))
+    print_status("Database URL", os.getenv("DATABASE_URL"))
+    print_status("Redis URL", os.getenv("REDIS_URL"))
     
     print("\n💡 To setup missing APIs, refer to SETUP_WIZARD.md")
 

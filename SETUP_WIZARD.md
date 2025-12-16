@@ -67,6 +67,29 @@ Connect VigilAI to where your team works.
     NOTION_DATABASE_ID=xxxxxxxxxxxxxxxx
     ```
 
+### 5. Salesforce Integration (CRM)
+*Used for: Syncing competitor data with your sales pipeline.*
+
+1.  **Create App**: Log in to Salesforce Setup -> **App Manager** -> **New Connected App**.
+2.  **Settings**:
+    *   Enable OAuth Settings.
+    *   Callback URL: `http://localhost:8000/api/v1/auth/callback/salesforce`
+    *   Scopes: `Full access` or `api`, `offline_access`.
+3.  **Get Keys**:
+    *   **Consumer Key** = `SALESFORCE_CLIENT_ID`
+    *   **Consumer Secret** = `SALESFORCE_CLIENT_SECRET`
+4.  **Security Token**:
+    *   Click Avatar -> Settings -> Reset My Security Token.
+    *   Check email for new token.
+5.  **Configure**:
+    ```env
+    SALESFORCE_CLIENT_ID=...
+    SALESFORCE_CLIENT_SECRET=...
+    SALESFORCE_USERNAME=your_email
+    SALESFORCE_PASSWORD=your_password
+    SALESFORCE_SECURITY_TOKEN=token_from_email
+    ```
+
 ---
 
 ## 🤖 Priority 3: Automation (N8N)
