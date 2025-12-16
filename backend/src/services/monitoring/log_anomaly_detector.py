@@ -451,28 +451,45 @@ class RootCauseAnalyzer:
     
     def _llm_based_analysis(self, anomaly: LogAnomaly) -> str:
         """
-        Use LLM for advanced root cause analysis.
-        This is a placeholder for LLM integration.
+        Use Google Gemini for advanced root cause analysis.
         """
-        # In production, send logs to Claude/GPT-4 for analysis
-        prompt = f"""
-        Analyze the following log anomaly and provide root cause analysis:
+        import google.generativeai as genai
+        import os
         
-        Component: {anomaly.affected_component}
-        Anomaly Type: {anomaly.anomaly_type}
-        Severity: {anomaly.severity}
-        
-        Recent logs:
-        {chr(10).join([log.message for log in anomaly.log_entries[-5:]])}
-        
-        Provide:
-        1. Root cause
-        2. Impact assessment
-        3. Recommended fix
-        """
-        
-        # Placeholder response
-        return "LLM analysis not configured. Configure Claude/GPT-4 API for advanced analysis."
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return "Google API key not configured. Cannot perform advanced RCA."
+            
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            You are an expert Site Reliability Engineer (SRE). Analyze this log anomaly:
+            
+            SYSTEM CONTEXT:
+            - Component: {anomaly.affected_component}
+            - Anomaly Type: {anomaly.anomaly_type}
+            - Severity: {anomaly.severity}
+            - Detected At: {anomaly.detected_at}
+            
+            LOG EVIDENCE (Last 5 Logs):
+            {chr(10).join([f"[{log.timestamp}] {log.level}: {log.message}" for log in anomaly.log_entries[-5:]])}
+            
+            YOUR ANALYSIS REQUEST:
+            1. What is the most likely root cause?
+            2. What is the potential impact on the system?
+            3. Provide 3 specific, actionable steps to fix this.
+            
+            Keep your response concise and technical.
+            """
+            
+            response = model.generate_content(prompt)
+            return response.text
+            
+        except Exception as e:
+            logger.error(f"Error during Gemini RCA: {e}")
+            return f"AI analysis failed: {str(e)}"
 
 
 class LogMonitoringService:

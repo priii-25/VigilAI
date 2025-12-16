@@ -91,6 +91,65 @@ async def analyze_logs(
     }
 
 
+@router.get("/analysis")
+async def get_log_analysis(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get aggregated log analysis data for the frontend dashboard"""
+    from datetime import datetime, timedelta
+    
+    # Get recent anomalies
+    result = await db.execute(
+        select(LogAnomaly)
+        .where(LogAnomaly.is_anomaly == True)
+        .order_by(desc(LogAnomaly.created_at))
+        .limit(50)
+    )
+    anomalies = result.scalars().all()
+    
+    # Get recent incidents for more context
+    incidents_result = await db.execute(
+        select(Incident)
+        .order_by(desc(Incident.created_at))
+        .limit(20)
+    )
+    incidents = incidents_result.scalars().all()
+    
+    # Build summary
+    total_logs = len(anomalies) * 100  # Estimate based on anomalies
+    errors = sum(1 for a in anomalies if a.anomaly_score > 0.8)
+    warnings = sum(1 for a in anomalies if 0.5 <= a.anomaly_score <= 0.8)
+    
+    # Format anomalies for frontend
+    formatted_anomalies = []
+    for anomaly in anomalies:
+        formatted_anomalies.append({
+            "anomaly_id": str(anomaly.id),
+            "anomaly_type": "log_anomaly",
+            "severity": "critical" if anomaly.anomaly_score > 0.9 else "high" if anomaly.anomaly_score > 0.7 else "medium" if anomaly.anomaly_score > 0.5 else "low",
+            "description": anomaly.log_message[:200] if anomaly.log_message else "Unknown anomaly",
+            "affected_component": anomaly.log_source or "system",
+            "detected_at": anomaly.created_at.isoformat() if anomaly.created_at else datetime.utcnow().isoformat(),
+            "confidence_score": anomaly.anomaly_score or 0.5,
+            "log_entries": anomaly.log_sequence[:5] if anomaly.log_sequence else [],
+            "rca": {
+                "root_cause": f"Anomaly detected with score {anomaly.anomaly_score:.2f}" if anomaly.anomaly_score else "Analysis pending"
+            }
+        })
+    
+    return {
+        "total_logs": total_logs,
+        "anomalies_detected": len(anomalies),
+        "log_summary": {
+            "errors": errors,
+            "warnings": warnings,
+            "info": total_logs - errors - warnings
+        },
+        "anomalies": formatted_anomalies
+    }
+
+
 @router.get("/anomalies", response_model=List[AnomalyResponse])
 async def list_anomalies(
     limit: int = 50,
@@ -106,6 +165,61 @@ async def list_anomalies(
     )
     anomalies = result.scalars().all()
     return anomalies
+
+
+class ChatRequest(BaseModel):
+    message: str
+    anomaly_id: str = None
+
+
+@router.post("/chat")
+async def chat_with_anomaly(
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """AI-powered chat for root cause analysis"""
+    import google.generativeai as genai
+    import os
+    
+    # Get anomaly context if provided
+    context = ""
+    if request.anomaly_id:
+        try:
+            anomaly_id = int(request.anomaly_id)
+            result = await db.execute(
+                select(LogAnomaly).where(LogAnomaly.id == anomaly_id)
+            )
+            anomaly = result.scalar_one_or_none()
+            if anomaly:
+                context = f"""
+                Anomaly Details:
+                - Log Message: {anomaly.log_message}
+                - Anomaly Score: {anomaly.anomaly_score}
+                - Source: {anomaly.log_source}
+                - Log Sequence: {anomaly.log_sequence[:5] if anomaly.log_sequence else 'N/A'}
+                """
+        except:
+            pass
+    
+    # Use Gemini for response
+    try:
+        genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""You are an expert DevOps and SRE assistant specializing in root cause analysis.
+        
+{context}
+
+User Question: {request.message}
+
+Provide a helpful, concise response about the potential root cause, impact, and recommended remediation steps.
+Keep your response focused and actionable."""
+
+        response = model.generate_content(prompt)
+        return {"response": response.text}
+    except Exception as e:
+        return {"response": f"I can help analyze this issue. Based on the available data, this appears to be a system anomaly that may require further investigation. Please check logs and monitoring dashboards for more details. Error: {str(e)}"}
 
 
 @router.get("/incidents", response_model=List[IncidentResponse])

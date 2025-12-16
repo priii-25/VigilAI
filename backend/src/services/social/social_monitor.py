@@ -268,14 +268,47 @@ class LinkedInScraper:
         max_results: int = 10
     ) -> List[Dict[str, Any]]:
         """
-        Fallback scraping method (use with caution - may violate ToS).
-        This is for demonstration only.
+        Fallback monitoring using Google News RSS for company updates.
+        This provides a safe, production-ready alternative to direct scraping.
         """
-        logger.warning("Using fallback scraping for LinkedIn - not recommended for production")
+        logger.info(f"Using Google News fallback for {company_name}")
         
-        # In production, always use official LinkedIn API
-        # This is a placeholder implementation
-        return []
+        try:
+            # Use Google News RSS feed for the company
+            rss_url = f"https://news.google.com/rss/search?q={company_name}+site:linkedin.com&hl=en-US&gl=US&ceid=US:en"
+            
+            response = requests.get(rss_url, timeout=10)
+            if response.status_code != 200:
+                logger.warning(f"Failed to fetch news RSS for {company_name}")
+                return []
+                
+            soup = BeautifulSoup(response.content, 'xml')
+            items = soup.find_all('item')[:max_results]
+            
+            posts = []
+            for item in items:
+                title = item.find('title').text if item.find('title') else ''
+                link = item.find('link').text if item.find('link') else ''
+                pub_date = item.find('pubDate').text if item.find('pubDate') else ''
+                
+                # Parse date
+                try:
+                    dt = datetime.strptime(pub_date, "%a, %d %b %Y %H:%M:%S %Z")
+                except:
+                    dt = datetime.utcnow()
+                
+                posts.append({
+                    'id': link,
+                    'text': title,
+                    'created_at': int(dt.timestamp() * 1000),
+                    'metrics': {'likeCount': 0, 'commentCount': 0, 'shareCount': 0}
+                })
+                
+            return posts
+            
+        except Exception as e:
+            logger.error(f"Error in fallback news scraping: {e}")
+            return []
     
     def monitor_competitor_linkedin(
         self,

@@ -33,33 +33,37 @@ class ProxyPool:
     def _fetch_proxies(self):
         """Fetch proxies from provider API"""
         try:
-            # Example: Using a proxy service API
-            # Replace with your actual proxy provider
+            # Fetch from free proxy list API (Proxyscrape)
+            # In production, you would use a paid provider like Bright Data or Smartproxy
+            response = requests.get(
+                "https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all"
+            )
             
-            # For demo: Create some proxy entries
-            # In production, fetch from services like:
-            # - ProxyCrawl
-            # - ScraperAPI  
-            # - Bright Data (Luminati)
-            # - Oxylabs
-            
-            if not self.api_key:
-                logger.warning("No proxy API key configured")
-                return
-            
-            # Mock proxy list for structure
-            self.proxies = [
-                {
-                    'host': 'proxy1.example.com',
-                    'port': 8080,
-                    'protocol': 'http',
-                    'country': 'US',
-                    'last_used': None
-                }
-            ]
+            if response.status_code == 200:
+                proxy_lines = response.text.strip().split('\n')
+                self.proxies = []
+                
+                for line in proxy_lines:
+                    if ':' in line:
+                        host, port = line.strip().split(':')
+                        self.proxies.append({
+                            'host': host,
+                            'port': int(port),
+                            'protocol': 'http',
+                            'country': 'unknown', # Free API doesn't always return country
+                            'last_used': None
+                        })
+                
+                logger.info(f"Loaded {len(self.proxies)} proxies from Proxyscrape")
+            else:
+                logger.error(f"Failed to fetch proxies: HTTP {response.status_code}")
+                # Fallback to a few reliable public proxies if API fails
+                self.proxies = [
+                     {'host': '20.206.106.192', 'port': 80, 'protocol': 'http', 'country': 'US', 'last_used': None},
+                     {'host': '20.210.113.32', 'port': 80, 'protocol': 'http', 'country': 'US', 'last_used': None}
+                ]
             
             self.last_refresh = datetime.utcnow()
-            logger.info(f"Loaded {len(self.proxies)} proxies")
             
         except Exception as e:
             logger.error(f"Error fetching proxies: {str(e)}")
