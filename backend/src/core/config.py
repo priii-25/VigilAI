@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     
     # AI APIs
     GOOGLE_API_KEY: str
-    PERPLEXITY_API_KEY: str = ""
     
     # Vector Database
     # Vector Database

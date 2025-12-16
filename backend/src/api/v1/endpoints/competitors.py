@@ -145,6 +145,8 @@ from src.services.social.social_monitor import SocialMediaMonitor
 from src.services.seo.seo_tracker import SEOTracker
 from src.services.integrations.job_boards import JobBoardAggregator
 from src.services.integrations.reviews import ReviewMonitor
+from src.services.integrations.slack_service import SlackService # Import Slack
+from src.core.config import settings # Check settings
 
 async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
     """Background task to scrape competitor data"""
@@ -158,9 +160,27 @@ async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
     
     logger.info(f"Starting scrape for {competitor.name}")
     
-    # Initialize scrapers
+    # Initialize scrapers & integrations
     ai_processor = AIProcessor()
+    slack_service = SlackService()
     
+    # helper for alerting
+    async def save_and_alert(update_obj: CompetitorUpdate):
+        db.add(update_obj)
+        # Alert if high impact or critical category
+        if update_obj.impact_score >= 7.0 or update_obj.category in ['acquisition', 'funding', 'pricing']:
+            await slack_service.send_competitor_alert(
+                {
+                    'id': str(competitor_id),
+                    'title': update_obj.title,
+                    'summary': update_obj.summary,
+                    'update_type': update_obj.update_type,
+                    'impact_score': update_obj.impact_score,
+                    'source_url': update_obj.source_url,
+                    'severity': 'critical' if update_obj.impact_score >= 8 else 'high'
+                }
+            )
+
     # 1. Web Scrapers (Core)
     try:
         if competitor.pricing_url:
@@ -177,7 +197,7 @@ async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
                     raw_data=pricing_data,
                     impact_score=5.0
                 )
-                db.add(update)
+                await save_and_alert(update)
 
         if competitor.careers_url:
             careers_scraper = CareersScraper()
@@ -194,7 +214,7 @@ async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
                     raw_data=careers_data,
                     impact_score=analysis.get('impact_score', 5.0)
                 )
-                db.add(update)
+                await save_and_alert(update)
 
         if competitor.blog_url:
             content_scraper = ContentScraper()
@@ -212,18 +232,20 @@ async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
                         raw_data=article,
                         impact_score=analysis.get('impact_score', 3.0)
                     )
-                    db.add(update)
+                    await save_and_alert(update)
     except Exception as e:
         logger.error(f"Error in web scraping for {competitor.name}: {e}")
 
     # 2. News Monitoring
     try:
         news_service = get_news_service()
-        news_results = news_service.get_comprehensive_news(competitor.name, include_perplexity=False) # disabled perplexity for now to save tokens/complexity
+        # Perplexity removed, using free Google News aggregator
+        news_results = news_service.get_comprehensive_news(competitor.name)
+        
         if news_results.get('articles'):
             for article in news_results['articles'][:3]: # Top 3 news
                 # Cheap impact score heuristic based on category
-                impact = 7.0 if article.get('category') in ['funding', 'product'] else 4.0
+                impact = 7.0 if article.get('category') in ['funding', 'product', 'acquisition'] else 4.0
                 update = CompetitorUpdate(
                     competitor_id=competitor_id,
                     update_type='news',
@@ -234,7 +256,7 @@ async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
                     raw_data=article,
                     impact_score=impact
                 )
-                db.add(update)
+                await save_and_alert(update)
     except Exception as e:
         logger.error(f"Error in news monitoring for {competitor.name}: {e}")
 

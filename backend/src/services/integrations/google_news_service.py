@@ -264,39 +264,27 @@ class GoogleNewsService:
 
 class UnifiedNewsAggregator:
     """
-    Unified news aggregator combining Google News RSS and Perplexity.
-    Provides comprehensive news coverage using free APIs.
+    Unified news aggregator using Google News RSS.
+    (Previously supported Perplexity, now standardized on free Google News).
     """
     
     def __init__(self):
         self.google_news = GoogleNewsService()
-        self._perplexity = None
-    
-    @property
-    def perplexity(self):
-        """Lazy load Perplexity service."""
-        if self._perplexity is None:
-            try:
-                from src.services.integrations.perplexity_service import PerplexityService
-                self._perplexity = PerplexityService()
-            except:
-                pass
-        return self._perplexity
     
     def get_comprehensive_news(
         self,
         competitor_name: str,
-        include_perplexity: bool = True
+        include_perplexity: bool = False # Kept for backward compatibility, ignored
     ) -> Dict[str, Any]:
         """
-        Get comprehensive news from all sources.
+        Get comprehensive news from Google News.
         
         Args:
             competitor_name: Name of competitor
-            include_perplexity: Whether to include Perplexity results
+            include_perplexity: Ignored (Perplexity integration removed)
             
         Returns:
-            Aggregated news from all sources
+            Aggregated news from Google News
         """
         results = {
             'competitor': competitor_name,
@@ -312,16 +300,6 @@ class UnifiedNewsAggregator:
             results['sources'].append('google_news')
             results['articles'].extend(google_result.get('articles', []))
             results['google_news'] = google_result
-        
-        # Get Perplexity analysis if available
-        if include_perplexity and self.perplexity:
-            try:
-                perplexity_result = self.perplexity.search_competitor_news(competitor_name)
-                if perplexity_result.get('success'):
-                    results['sources'].append('perplexity')
-                    results['perplexity_analysis'] = perplexity_result
-            except Exception as e:
-                logger.warning(f"Perplexity unavailable: {str(e)}")
         
         results['total_articles'] = len(results['articles'])
         
