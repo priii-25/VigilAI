@@ -13,3 +13,6 @@ api_router.include_router(battlecards.router, prefix="/battlecards", tags=["Batt
 api_router.include_router(logs.router, prefix="/logs", tags=["Log Analysis"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+
+from src.api.v1.endpoints import chat
+api_router.include_router(chat.router, prefix="/chat", tags=["Voice Assistant"])
