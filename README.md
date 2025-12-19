@@ -13,6 +13,7 @@ VigilAI (Sentinel-CI) is a production-ready, enterprise-grade competitive intell
 - **📊 Dynamic Battlecards**: Auto-updated competitive battlecards synced to Notion
 - **🔔 Real-Time Alerts**: Slack notifications for high-impact competitive changes
 - **🛡️ AIOps & Observability**: LogBERT-based anomaly detection and root cause analysis
+- **🎙️ Voice Assistant**: "Jarvis-like" voice control to query platform data and get spoken summaries
 - **🌐 Chrome Extension**: Battlecard companion for on-the-go competitive intelligence
 - **⚡ Production-Ready**: Docker, async processing, caching, and scalability built-in
 
@@ -146,6 +147,32 @@ docker-compose logs -f
 - **Backend API**: http://localhost:8000
 - **API Documentation**: http://localhost:8000/docs
 - **N8N Workflows**: http://localhost:5678
+
+---
+
+## 🎮 Usage Guide
+
+### 🎙️ Using the Voice Assistant
+1.  Look for the **Microphone Icon 🎙️** in the bottom-right corner of any page.
+2.  Click to activate.
+3.  **Ask a question**:
+    *   *"What is the status of Competitor X?"*
+    *   *"Summarize the latest market news."*
+    *   *"Are there any system errors?"*
+4.  VigilAI will speak the answer back to you using the platform's aggregated data!
+
+### 📊 Monitoring Competitors
+1.  Go to the **Competitors** page.
+2.  Add a competitor (Domain + Name).
+3.  Click **Scrape** to fetch initial data.
+4.  View generated **Battlecards** to see Strengths, Weaknesses, and Kill Points.
+
+### 🔔 Receiving Alerts
+- Ensure you have configured Slack in `.env`.
+- You will receive notifications in `#competitive-intel` when:
+    - A competitor changes pricing.
+    - A new blog post is published.
+    - A serious system anomaly occurs.
 
 ---
 
