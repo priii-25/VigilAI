@@ -18,53 +18,76 @@ class UnifiedChatService:
         self.model = genai.GenerativeModel('gemini-2.5-flash')
 
     async def _get_context(self, db: AsyncSession, query: str) -> str:
-        """Gather relevant context based on query keywords"""
+        """Gather deep context based on query relevance"""
         context_parts = []
+        query_lower = query.lower()
         
-        # 1. Competitors Context
-        # Simple keyword match for now
+        # 1. Fetch all competitors to check for mentions
         comp_result = await db.execute(select(Competitor))
         competitors = comp_result.scalars().all()
         
-        relevant_comps = []
+        mentioned_competitors = []
         for comp in competitors:
-            # If competitor name is in query or query asks about "all competitors"
-            if comp.name.lower() in query.lower() or "competitor" in query.lower():
-                relevant_comps.append(f"- {comp.name}: {comp.description}")
-        
-        if relevant_comps:
-            context_parts.append(f"COMPETITORS DATA:\n" + "\n".join(relevant_comps))
+            if comp.name.lower() in query_lower:
+                mentioned_competitors.append(comp)
 
-        # 2. Recent Updates/News
-        if "news" in query.lower() or "update" in query.lower() or "happening" in query.lower():
+        # 2. Deep Context for Mentioned Competitors
+        if mentioned_competitors:
+            for comp in mentioned_competitors:
+                # Basic Info
+                details = [f"COMPETITOR: {comp.name}", f"Description: {comp.description}"]
+                if comp.extra_data:
+                    details.append(f"Metadata: {comp.extra_data}")
+                
+                # Fetch Battlecard (Strengths/Weaknesses)
+                bc_result = await db.execute(
+                    select(Battlecard).where(Battlecard.competitor_id == comp.id)
+                )
+                battlecard = bc_result.scalar_one_or_none()
+                if battlecard:
+                    details.append(f"STRENGTHS: {', '.join(battlecard.strengths or [])}")
+                    details.append(f"WEAKNESSES: {', '.join(battlecard.weaknesses or [])}")
+                    details.append(f"KILL POINTS: {', '.join(battlecard.kill_points or [])}")
+                
+                # Fetch Recent Updates
+                updates_result = await db.execute(
+                    select(CompetitorUpdate)
+                    .where(CompetitorUpdate.competitor_id == comp.id)
+                    .order_by(desc(CompetitorUpdate.created_at))
+                    .limit(5)
+                )
+                updates = updates_result.scalars().all()
+                if updates:
+                    details.append("RECENT INTEL:")
+                    for u in updates:
+                        details.append(f"- [{u.update_type.upper()}] {u.title} ({u.summary[:100]}...)")
+                
+                context_parts.append("\n".join(details))
+        
+        else:
+            # 3. Broad Context (if no specific competitor mentioned)
+            # List all competitors briefly
+            comps_summary = "\n".join([f"- {c.name}: {c.description}" for c in competitors[:10]])
+            context_parts.append(f"TRACKED COMPETITORS:\n{comps_summary}")
+            
+            # Recent Market News (Global)
             updates_result = await db.execute(
                 select(CompetitorUpdate).order_by(desc(CompetitorUpdate.created_at)).limit(5)
             )
             updates = updates_result.scalars().all()
             if updates:
-                news_text = "\n".join([f"- {u.title} ({u.source})" for u in updates])
-                context_parts.append(f"RECENT MARKET NEWS:\n{news_text}")
+                news = "\n".join([f"- {u.title} (re: {u.category})" for u in updates])
+                context_parts.append(f"LATEST MARKET UPDATES:\n{news}")
 
-        # 3. Logs/System Health
-        if "error" in query.lower() or "system" in query.lower() or "log" in query.lower() or "status" in query.lower():
-            # Get error count
-            error_count = await db.execute(
-                select(LogAnomaly).where(LogAnomaly.is_anomaly == True).limit(5)
+        # 4. System Health (always relevant for 'status' queries)
+        if "system" in query_lower or "log" in query_lower or "health" in query_lower:
+             error_count = await db.execute(
+                select(LogAnomaly).where(LogAnomaly.is_anomaly == True).order_by(desc(LogAnomaly.created_at)).limit(5)
             )
-            anomalies = error_count.scalars().all()
-            if anomalies:
+             anomalies = error_count.scalars().all()
+             if anomalies:
                 logs_text = "\n".join([f"- {a.log_message[:100]} (Severity: {a.anomaly_score})" for a in anomalies])
-                context_parts.append(f"SYSTEM HEALTH ALERTS:\n{logs_text}")
-            else:
-                context_parts.append("SYSTEM HEALTH: All systems operational. No recent anomalies.")
-                
-        # 4. Battlecards
-        if "battlecard" in query.lower() or "pitch" in query.lower() or "kill" in query.lower():
-             cards_result = await db.execute(select(Battlecard).limit(3))
-             cards = cards_result.scalars().all()
-             if cards:
-                 cards_text = "\n".join([f"- Battlecard for {c.competitor_id}" for c in cards]) # optimizing join query would be better but keeping simple
-                 context_parts.append(f"AVAILABLE BATTLECARDS:\n{cards_text}")
+                context_parts.append(f"SYSTEM ALERTS:\n{logs_text}")
 
         return "\n\n".join(context_parts)
 
