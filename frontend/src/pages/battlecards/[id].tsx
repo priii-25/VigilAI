@@ -17,22 +17,16 @@ interface Battlecard {
     overview: string;
     kill_points: string[];
     objection_handling: Record<string, string>;
-    id: number;
-    competitor_id: number;
-    title: string;
-    overview: string;
-    strengths: string[];
-    weaknesses: string[];
-    kill_points: string[];
-    objections: Array<{ objection: string; response: string }>;
-    win_loss_analysis: {
+    strengths?: string[];
+    weaknesses?: string[];
+    win_loss_analysis?: {
         win_rate: number;
         common_reasons_won: string[];
         common_reasons_lost: string[];
     };
-    pricing_comparison: string;
-    is_published: boolean;
-    last_updated: string;
+    pricing_comparison?: string;
+    is_published?: boolean;
+    updated_at: string;
 }
 
 export default function BattlecardDetail() {
@@ -42,7 +36,7 @@ export default function BattlecardDetail() {
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState<Battlecard | null>(null);
 
-    const { data: fetchedBattlecard, isLoading } = useQuery<Battlecard>({
+    const { data: battlecard, isLoading } = useQuery<Battlecard>({
         queryKey: ['battlecard', id],
         queryFn: async () => {
             if (!id) return null;
@@ -61,7 +55,6 @@ export default function BattlecardDetail() {
             });
         }
     }, [battlecard]);
-
     const updateMutation = useMutation({
         mutationFn: (data: Partial<Battlecard>) => battlecardsAPI.update(Number(id), data),
         onSuccess: () => {
@@ -79,6 +72,7 @@ export default function BattlecardDetail() {
     };
 
     const handleShare = async () => {
+        if (!battlecard) return;
         const url = window.location.href;
         if (navigator.share) {
             try {
@@ -295,9 +289,9 @@ export default function BattlecardDetail() {
                                                     ) : (
                                                         <>
                                                             <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-start gap-3">
-                                                                <span className="text-red-500 mt-1">"</span>
+                                                                <span className="text-red-500 mt-1">&quot;</span>
                                                                 {objection}
-                                                                <span className="text-red-500 mt-1">"</span>
+                                                                <span className="text-red-500 mt-1">&quot;</span>
                                                             </h3>
                                                             <div className="pl-6 border-l-4 border-primary-500">
                                                                 <p className="text-gray-700 leading-relaxed">{response}</p>

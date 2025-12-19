@@ -161,7 +161,7 @@ export default function SimulatorConsole() {
                         <div>
                             <label className="text-xs font-medium text-gray-500 uppercase block mb-2">Market Reaction</label>
                             <div className="p-4 bg-amber-50/50 text-amber-900 rounded-xl text-sm border border-amber-100 italic">
-                                "{result.market_reaction}"
+                                &quot;{result.market_reaction}&quot;
                             </div>
                         </div>
 

@@ -58,7 +58,7 @@ export default function Home() {
                   </h1>
                   <Sparkles className="text-primary-500" size={24} />
                 </div>
-                <p className="text-gray-500">Here's what's happening with your competitive landscape</p>
+                <p className="text-gray-500">Here&apos;s what&apos;s happening with your competitive landscape</p>
               </div>
 
               <DashboardStats />

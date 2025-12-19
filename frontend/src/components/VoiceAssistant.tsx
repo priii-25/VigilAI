@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
-import { api } from '../lib/api';
 
 // Type definition for SpeechRecognition
 declare global {
@@ -15,44 +14,22 @@ const VoiceAssistant: React.FC = () => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const recognitionRef = useRef<any>(null);
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                recognitionRef.current = new SpeechRecognition();
-                recognitionRef.current.continuous = false;
-                recognitionRef.current.interimResults = false;
-                recognitionRef.current.lang = 'en-US';
-
-                recognitionRef.current.onresult = async (event: any) => {
-                    const transcript = event.results[0][0].transcript;
-                    console.log('Voice Query:', transcript);
-                    handleVoiceQuery(transcript);
-                };
-
-                recognitionRef.current.onerror = (event: any) => {
-                    console.error('Speech recognition error', event.error);
-                    setIsListening(false);
-                    toast.error("Voice recognition failed. Try again.");
-                };
-
-                recognitionRef.current.onend = () => {
-                    setIsListening(false);
-                };
-            }
+    const speakResponse = React.useCallback((text: string) => {
+        if ('speechSynthesis' in window) {
+            setIsSpeaking(true);
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onend = () => setIsSpeaking(false);
+            window.speechSynthesis.speak(utterance);
+        } else {
+            toast("Text-to-speech not supported.");
         }
     }, []);
 
-    const handleVoiceQuery = async (query: string) => {
+    const handleVoiceQuery = React.useCallback(async (query: string) => {
         toast.loading(`Thinking: "${query}"...`, { id: 'voice-query' });
 
         try {
-            // Create axios instance or use fetch if api.ts doesn't have it yet
-            // Assuming api.ts has a generic request or we add it. 
-            // For now using fetch to match likely auth header needs or minimal deps
-
-            const token = localStorage.getItem('token'); // Simplistic token grab
-
+            const token = localStorage.getItem('token');
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/chat/query`, {
                 method: 'POST',
                 headers: {
@@ -73,18 +50,35 @@ const VoiceAssistant: React.FC = () => {
             console.error(error);
             toast.error("Failed to process voice query", { id: 'voice-query' });
         }
-    };
+    }, [speakResponse]);
 
-    const speakResponse = (text: string) => {
-        if ('speechSynthesis' in window) {
-            setIsSpeaking(true);
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.onend = () => setIsSpeaking(false);
-            window.speechSynthesis.speak(utterance);
-        } else {
-            toast("Text-to-speech not supported.");
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognitionRef.current = new SpeechRecognition();
+                recognitionRef.current.continuous = false;
+                recognitionRef.current.interimResults = false;
+                recognitionRef.current.lang = 'en-US';
+
+                recognitionRef.current.onresult = async (event: any) => {
+                    const transcript = event.results[0][0].transcript;
+                    console.log('Voice Query:', transcript);
+                    handleVoiceQuery(transcript);
+                };
+
+                recognitionRef.current.onerror = (event: any) => {
+                    console.error('Speech recognition error', event.error);
+                    setIsListening(false);
+                    // Don't toast on error, it's annoying if just silence
+                };
+
+                recognitionRef.current.onend = () => {
+                    setIsListening(false);
+                };
+            }
         }
-    };
+    }, [handleVoiceQuery]);
 
     const toggleListening = () => {
         if (isListening) {
@@ -113,8 +107,8 @@ const VoiceAssistant: React.FC = () => {
             <button
                 onClick={toggleListening}
                 className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center transition-all transform hover:scale-105 active:scale-95 ${isListening
-                        ? 'bg-red-500 animate-pulse ring-4 ring-red-300'
-                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    ? 'bg-red-500 animate-pulse ring-4 ring-red-300'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
                     }`}
                 title="Ask VigilAI"
             >

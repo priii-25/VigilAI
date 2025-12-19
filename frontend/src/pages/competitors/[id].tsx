@@ -210,7 +210,7 @@ export default function CompetitorDetail() {
                                                 <div className="text-center py-8 text-gray-500">Loading intelligence...</div>
                                             ) : updates?.length === 0 ? (
                                                 <div className="text-center py-8 text-gray-500">
-                                                    No recent updates detected. Click "Update Intelligence" to scan for new data.
+                                                    No recent updates detected. Click &quot;Update Intelligence&quot; to scan for new data.
                                                 </div>
                                             ) : (
                                                 updates?.map((update: CompetitorUpdate, idx: number) => (
