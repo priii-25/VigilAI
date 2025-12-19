@@ -12,12 +12,14 @@ const queryClient = new QueryClient({
 });
 
 import { Toaster } from 'react-hot-toast';
+import VoiceAssistant from '@/components/VoiceAssistant';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-right" />
       <Component {...pageProps} />
+      <VoiceAssistant />
     </QueryClientProvider>
   );
 }

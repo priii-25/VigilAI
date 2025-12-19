@@ -313,3 +313,43 @@ async def publish_battlecard(
     
     return {"message": "Battlecard published successfully"}
 
+
+@router.post("/{battlecard_id}/sync-crm")
+async def sync_battlecard_to_crm(
+    battlecard_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Sync battlecard to Salesforce CRM"""
+    result = await db.execute(select(Battlecard).where(Battlecard.id == battlecard_id))
+    battlecard = result.scalar_one_or_none()
+    
+    if not battlecard:
+        raise HTTPException(status_code=404, detail="Battlecard not found")
+        
+    try:
+        from src.services.integrations.salesforce_service import CRMEnrichmentService
+        crm_service = CRMEnrichmentService()
+        
+        # Prepare battlecard data
+        battlecard_data = {
+            'competitor_name': battlecard.title,
+            'kill_points': battlecard.kill_points or [],
+            'weaknesses': battlecard.weaknesses or []
+        }
+        
+        # Determine relevant opportunities (auto-enrich)
+        count = crm_service.auto_enrich_relevant_opportunities(
+            battlecard.title,
+            battlecard_data
+        )
+        
+        return {
+            "message": f"Synced to Salesforce. Enriched {count} opportunities.",
+            "opportunities_enriched": count
+        }
+        
+    except Exception as e:
+        logger.error(f"Salesforce sync failed: {e}")
+        raise HTTPException(status_code=500, detail=f"CRM sync failed: {str(e)}")
+
