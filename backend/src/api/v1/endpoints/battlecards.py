@@ -10,7 +10,9 @@ from pydantic import BaseModel
 from src.core.database import get_db
 from src.core.security import get_current_user
 from src.models.battlecard import Battlecard
+from src.models.competitor import Competitor
 from loguru import logger
+from datetime import datetime
 
 router = APIRouter()
 
@@ -25,6 +27,8 @@ class BattlecardResponse(BaseModel):
     objection_handling: List[dict]
     kill_points: List[str]
     is_published: bool
+    competitor_name: Optional[str] = None
+    updated_at: datetime
     
     class Config:
         from_attributes = True
@@ -58,9 +62,21 @@ async def list_battlecards(
     current_user: dict = Depends(get_current_user)
 ):
     """List all battlecards"""
-    result = await db.execute(select(Battlecard).order_by(Battlecard.updated_at.desc()))
-    battlecards = result.scalars().all()
-    return battlecards
+    query = (
+        select(Battlecard, Competitor.name.label("competitor_name"))
+        .join(Competitor, Battlecard.competitor_id == Competitor.id)
+        .order_by(Battlecard.updated_at.desc())
+    )
+    result = await db.execute(query)
+    rows = result.all()
+    
+    return [
+        BattlecardResponse(
+            **battlecard.__dict__,
+            competitor_name=competitor_name
+        )
+        for battlecard, competitor_name in rows
+    ]
 
 
 @router.post("/", response_model=BattlecardResponse)
@@ -120,13 +136,19 @@ async def get_battlecard(
     current_user: dict = Depends(get_current_user)
 ):
     """Get battlecard details"""
-    result = await db.execute(select(Battlecard).where(Battlecard.id == battlecard_id))
-    battlecard = result.scalar_one_or_none()
+    query = (
+        select(Battlecard, Competitor.name.label("competitor_name"))
+        .join(Competitor, Battlecard.competitor_id == Competitor.id)
+        .where(Battlecard.id == battlecard_id)
+    )
+    result = await db.execute(query)
+    row = result.first()
     
-    if not battlecard:
+    if not row:
         raise HTTPException(status_code=404, detail="Battlecard not found")
-    
-    return battlecard
+        
+    battlecard, competitor_name = row
+    return BattlecardResponse(**battlecard.__dict__, competitor_name=competitor_name)
 
 
 @router.get("/{battlecard_id}/pdf")
