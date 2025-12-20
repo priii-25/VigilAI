@@ -58,7 +58,7 @@ async def list_battlecards(
     current_user: dict = Depends(get_current_user)
 ):
     """List all battlecards"""
-    result = await db.execute(select(Battlecard).where(Battlecard.is_published == True))
+    result = await db.execute(select(Battlecard).order_by(Battlecard.updated_at.desc()))
     battlecards = result.scalars().all()
     return battlecards
 
