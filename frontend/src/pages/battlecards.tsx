@@ -5,7 +5,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import { Plus, Edit, Trash2, Eye, Copy, Download, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Copy, Download, Search, AlertTriangle, X } from 'lucide-react';
 
 export default function Battlecards() {
   const router = useRouter();
@@ -13,6 +13,10 @@ export default function Battlecards() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Custom Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: number, title: string } | null>(null);
 
   const { data: battlecards, isLoading } = useQuery({
     queryKey: ['battlecards'],
@@ -38,8 +42,15 @@ export default function Battlecards() {
   });
 
   const handleDelete = (id: number, title: string) => {
-    if (confirm(`Delete battlecard "${title}"? This cannot be undone.`)) {
-      deleteMutation.mutate(id);
+    setItemToDelete({ id, title });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      deleteMutation.mutate(itemToDelete.id);
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
@@ -237,6 +248,49 @@ export default function Battlecards() {
           </main>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && itemToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl scale-100 transform transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="text-red-600" size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Delete Battlecard?</h3>
+              </div>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <span className="font-semibold text-gray-900">"{itemToDelete.title}"</span>?
+              This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium flex items-center justify-center gap-2"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (
