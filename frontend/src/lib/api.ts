@@ -40,6 +40,8 @@ export const competitorsAPI = {
   triggerScrape: (id: number) => apiClient.post(`/competitors/${id}/scrape`),
 
   getUpdates: (id: number) => apiClient.get(`/competitors/${id}/updates`),
+
+  news: (id: number) => apiClient.get(`/competitors/${id}/news`),
 };
 
 // Battlecards API

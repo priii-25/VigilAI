@@ -353,3 +353,32 @@ async def scrape_competitor_data(competitor_id: int, db: AsyncSession):
     
     await db.commit()
     logger.info(f"Completed full scraping cycle for {competitor.name}")
+
+
+@router.get("/{competitor_id}/news")
+async def get_competitor_news(
+    competitor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get live news for a competitor"""
+    result = await db.execute(select(Competitor).where(Competitor.id == competitor_id))
+    competitor = result.scalar_one_or_none()
+    
+    if not competitor:
+        raise HTTPException(status_code=404, detail="Competitor not found")
+    
+    try:
+        news_service = get_news_service()
+        # Use simpler get_competitor_news directly
+        news = news_service.get_competitor_news(competitor.name)
+        return news
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"News fetch failed: {e}")
+        # Return empty structure on failure rather than 500
+        return {
+            "competitor": competitor.name, 
+            "articles": [],
+            "error": "Unable to fetch news"
+        }

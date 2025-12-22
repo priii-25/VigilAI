@@ -5,7 +5,7 @@ import { competitorsAPI } from '@/lib/api';
 import Head from 'next/head';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
-import { RefreshCw, ExternalLink, Globe, FileText, Briefcase, TrendingUp, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { RefreshCw, ExternalLink, Globe, FileText, Briefcase, TrendingUp, AlertTriangle, ArrowLeft, Newspaper, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import StrategyDriftChart from '@/components/StrategyDriftChart';
 
@@ -57,6 +57,16 @@ export default function CompetitorDetail() {
         queryFn: async () => {
             if (!id) return [];
             const response = await competitorsAPI.getUpdates(Number(id));
+            return response.data;
+        },
+        enabled: !!id,
+    });
+
+    const { data: news, isLoading: isLoadingNews } = useQuery({
+        queryKey: ['competitor-news', id],
+        queryFn: async () => {
+            if (!id) return null;
+            const response = await competitorsAPI.news(Number(id));
             return response.data;
         },
         enabled: !!id,
@@ -235,6 +245,68 @@ export default function CompetitorDetail() {
                                         </div>
                                     </div>
 
+                                </div>
+
+                                {/* Live News Feed */}
+                                <div className="col-span-2 mt-0">
+                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                                <Newspaper className="text-blue-600" size={20} />
+                                                Live News Feed
+                                            </h2>
+                                            <span className="text-xs text-gray-400">Powered by Google News</span>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {isLoadingNews ? (
+                                                <>
+                                                    <div className="h-20 bg-gray-50 rounded-lg animate-pulse"></div>
+                                                    <div className="h-20 bg-gray-50 rounded-lg animate-pulse"></div>
+                                                    <div className="h-20 bg-gray-50 rounded-lg animate-pulse"></div>
+                                                </>
+                                            ) : !news?.articles?.length ? (
+                                                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                                                    No recent news articles found for this competitor.
+                                                </div>
+                                            ) : (
+                                                news.articles.slice(0, 5).map((article: any, idx: number) => (
+                                                    <a
+                                                        key={idx}
+                                                        href={article.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="block p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group"
+                                                    >
+                                                        <div className="flex justify-between items-start gap-4">
+                                                            <div className="flex-1">
+                                                                <h3 className="font-semibold text-gray-900 group-hover:text-blue-700 leading-tight mb-2">
+                                                                    {article.title}
+                                                                </h3>
+                                                                <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                                                                    <span className="font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                                                                        {article.source}
+                                                                    </span>
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Calendar size={12} />
+                                                                        {article.published_date
+                                                                            ? new Date(article.published_date).toLocaleDateString()
+                                                                            : 'Recent'}
+                                                                    </span>
+                                                                </div>
+                                                                {article.snippet && (
+                                                                    <p className="text-sm text-gray-600 line-clamp-2">
+                                                                        {article.snippet.replace(/<[^>]*>?/gm, '')}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <ExternalLink size={16} className="text-gray-300 group-hover:text-blue-500 flex-shrink-0 mt-1" />
+                                                        </div>
+                                                    </a>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Sidebar Info Column */}
