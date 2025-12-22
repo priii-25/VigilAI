@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import RecentActivity from '@/components/dashboard/RecentActivity';
+import CompetitorRadar from '@/components/dashboard/CompetitorRadar';
 import { Sparkles } from 'lucide-react';
 
 export default function Home() {
@@ -63,8 +64,13 @@ export default function Home() {
 
               <DashboardStats />
 
-              <div className="mt-8">
-                <RecentActivity />
+              <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2">
+                  <RecentActivity />
+                </div>
+                <div className="lg:col-span-1 h-[600px]">
+                  <CompetitorRadar />
+                </div>
               </div>
             </div>
           </main>

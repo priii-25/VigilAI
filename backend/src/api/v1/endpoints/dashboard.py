@@ -71,17 +71,23 @@ async def get_recent_activity(
     from sqlalchemy import desc
     
     # Get recent competitor updates
+    # Get recent competitor updates with competitor details
     result = await db.execute(
-        select(CompetitorUpdate)
+        select(CompetitorUpdate, Competitor.name, Competitor.domain)
+        .join(Competitor, CompetitorUpdate.competitor_id == Competitor.id)
         .order_by(desc(CompetitorUpdate.created_at))
         .limit(limit)
     )
-    updates = result.scalars().all()
+    rows = result.all()
     
     activity = []
-    for update in updates:
+    for update, comp_name, comp_domain in rows:
         activity.append({
+            "id": update.id,
             "type": "competitor_update",
+            "competitor_name": comp_name,
+            "competitor_domain": comp_domain,
+            "competitor_id": update.competitor_id,
             "title": update.title,
             "summary": update.summary,
             "impact_score": update.impact_score,
