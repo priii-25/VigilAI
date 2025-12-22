@@ -8,6 +8,7 @@ import Header from '@/components/layout/Header';
 import { RefreshCw, ExternalLink, Globe, FileText, Briefcase, TrendingUp, AlertTriangle, ArrowLeft, Newspaper, Calendar } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import StrategyDriftChart from '@/components/StrategyDriftChart';
+import { formatDistanceToNow } from 'date-fns';
 
 
 interface CompetitorUpdate {
@@ -101,11 +102,15 @@ export default function CompetitorDetail() {
 
     // Helper to determine badge color based on update type
     const getUpdateBadgeColor = (type: string) => {
-        switch (type) {
-            case 'pricing': return 'bg-yellow-100 text-yellow-800';
-            case 'hiring': return 'bg-blue-100 text-blue-800';
-            case 'content': return 'bg-purple-100 text-purple-800';
-            default: return 'bg-gray-100 text-gray-800';
+        switch (type?.toLowerCase()) {
+            case 'pricing': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'hiring': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'content': return 'bg-purple-100 text-purple-800 border-purple-200';
+            case 'funding': return 'bg-green-100 text-green-800 border-green-200';
+            case 'product': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+            case 'partnership': return 'bg-pink-100 text-pink-800 border-pink-200';
+            case 'leadership': return 'bg-orange-100 text-orange-800 border-orange-200';
+            default: return 'bg-gray-100 text-gray-600 border-gray-200';
         }
     };
 
@@ -249,25 +254,40 @@ export default function CompetitorDetail() {
 
                                 {/* Live News Feed */}
                                 <div className="col-span-2 mt-0">
-                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                                        <div className="flex items-center justify-between mb-6">
+                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                                 <Newspaper className="text-blue-600" size={20} />
-                                                Live News Feed
+                                                Live Intelligence Feed
                                             </h2>
-                                            <span className="text-xs text-gray-400">Powered by Google News</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="relative flex h-2 w-2">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                                </span>
+                                                <span className="text-xs font-medium text-gray-500">Live</span>
+                                            </div>
                                         </div>
 
-                                        <div className="space-y-4">
+                                        <div className="divide-y divide-gray-50">
                                             {isLoadingNews ? (
-                                                <>
-                                                    <div className="h-20 bg-gray-50 rounded-lg animate-pulse"></div>
-                                                    <div className="h-20 bg-gray-50 rounded-lg animate-pulse"></div>
-                                                    <div className="h-20 bg-gray-50 rounded-lg animate-pulse"></div>
-                                                </>
+                                                <div className="p-6 space-y-4">
+                                                    {[1, 2, 3].map((i) => (
+                                                        <div key={i} className="flex gap-4 animate-pulse">
+                                                            <div className="flex-1 space-y-2">
+                                                                <div className="h-4 bg-gray-100 rounded w-3/4"></div>
+                                                                <div className="h-3 bg-gray-50 rounded w-1/2"></div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             ) : !news?.articles?.length ? (
-                                                <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                                    No recent news articles found for this competitor.
+                                                <div className="p-12 text-center">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <Newspaper className="text-gray-300" size={32} />
+                                                    </div>
+                                                    <h3 className="text-gray-900 font-medium mb-1">No recent news found</h3>
+                                                    <p className="text-gray-500 text-sm">We couldn't detect any recent articles for {competitor.name}.</p>
                                                 </div>
                                             ) : (
                                                 news.articles.slice(0, 5).map((article: any, idx: number) => (
@@ -276,35 +296,45 @@ export default function CompetitorDetail() {
                                                         href={article.url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="block p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all group"
+                                                        className="block p-5 hover:bg-gray-50 transition-colors group relative"
                                                     >
-                                                        <div className="flex justify-between items-start gap-4">
-                                                            <div className="flex-1">
-                                                                <h3 className="font-semibold text-gray-900 group-hover:text-blue-700 leading-tight mb-2">
-                                                                    {article.title}
-                                                                </h3>
-                                                                <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
-                                                                    <span className="font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
-                                                                        {article.source}
-                                                                    </span>
-                                                                    <span className="flex items-center gap-1">
-                                                                        <Calendar size={12} />
-                                                                        {article.published_date
-                                                                            ? new Date(article.published_date).toLocaleDateString()
-                                                                            : 'Recent'}
-                                                                    </span>
-                                                                </div>
-                                                                {article.snippet && (
-                                                                    <p className="text-sm text-gray-600 line-clamp-2">
-                                                                        {article.snippet.replace(/<[^>]*>?/gm, '')}
-                                                                    </p>
-                                                                )}
+                                                        <div className="flex justify-between items-start gap-3 mb-2">
+                                                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                                <span className="font-semibold text-gray-700">{article.source}</span>
+                                                                <span>•</span>
+                                                                <span>
+                                                                    {article.published_date
+                                                                        ? formatDistanceToNow(new Date(article.published_date), { addSuffix: true })
+                                                                        : 'Recently'}
+                                                                </span>
                                                             </div>
-                                                            <ExternalLink size={16} className="text-gray-300 group-hover:text-blue-500 flex-shrink-0 mt-1" />
+                                                            {article.category && article.category !== 'general' && (
+                                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${getUpdateBadgeColor(article.category)}`}>
+                                                                    {article.category}
+                                                                </span>
+                                                            )}
                                                         </div>
+
+                                                        <h3 className="font-semibold text-gray-900 leading-snug mb-2 group-hover:text-blue-600 transition-colors pr-6">
+                                                            {article.title}
+                                                        </h3>
+
+                                                        {article.snippet && (
+                                                            <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                                                                {article.snippet.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ')}
+                                                            </p>
+                                                        )}
+
+                                                        <ExternalLink size={14} className="absolute top-5 right-5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     </a>
                                                 ))
                                             )}
+                                        </div>
+                                        <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
+                                            <span className="text-xs text-gray-400">Powered by Google News</span>
+                                            <a href={`https://news.google.com/search?q=${competitor.name}`} target="_blank" className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                                View all news <ArrowLeft className="rotate-180" size={10} />
+                                            </a>
                                         </div>
                                     </div>
                                 </div>

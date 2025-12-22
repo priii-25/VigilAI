@@ -214,6 +214,7 @@ class GoogleNewsService:
             categorized = False
             for category, keywords in category_keywords.items():
                 if any(kw in text for kw in keywords):
+                    article['category'] = category
                     categories[category].append(article)
                     categorized = True
                     break
