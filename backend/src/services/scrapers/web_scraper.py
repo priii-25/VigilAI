@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import requests
 from datetime import datetime
 from loguru import logger
+import re
 from src.core.config import settings
 
 
@@ -21,8 +22,16 @@ class WebScraper:
     def get_proxy(self) -> Optional[Dict[str, str]]:
         """Get proxy from pool if enabled"""
         if settings.PROXY_POOL_ENABLED:
-            # Implement proxy rotation logic here
-            pass
+            # Production: Use configured proxy service
+            # Supports simple rotation via environment variable configuration
+            import random
+            if hasattr(settings, 'PROXY_LIST') and settings.PROXY_LIST:
+                proxy = random.choice(settings.PROXY_LIST)
+                return {"http": proxy, "https": proxy}
+            
+            # Fallback to single proxy if defined
+            if hasattr(settings, 'HTTP_PROXY') and settings.HTTP_PROXY:
+                 return {"http": settings.HTTP_PROXY, "https": settings.HTTP_PROXY}
         return None
     
     def fetch_page(self, url: str) -> Optional[str]:
@@ -101,16 +110,17 @@ class PricingScraper(WebScraper):
         return None
     
     def _extract_price(self, section) -> Optional[str]:
-        """Extract price from section"""
-        price_indicators = ['$', '€', '£', 'USD', 'price']
+        """Extract price from section using regex"""
         text = section.get_text()
         
-        for indicator in price_indicators:
-            if indicator in text:
-                # Simple extraction - can be enhanced with regex
-                lines = [line.strip() for line in text.split('\n') if indicator in line]
-                if lines:
-                    return lines[0][:100]
+        # Regex for currency patterns (e.g., $10, 10 USD, €20/mo)
+        # Matches: Symbol+Number or Number+Currency Code, optional per-month/year
+        price_pattern = r'([$€£¥]\s?\d+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?\s?(?:USD|EUR|GBP))(?:\s?\/\s?(?:mo|month|yr|year|user))?'
+        
+        match = re.search(price_pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(0).strip()
+            
         return None
     
     def _extract_features(self, section) -> List[str]:
