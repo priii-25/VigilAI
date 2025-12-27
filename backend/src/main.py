@@ -279,3 +279,31 @@ async def send_test_slack_message():
             "error": str(e)
         }
 
+
+@app.get("/system/salesforce/test")
+async def test_salesforce_connection():
+    """Test Salesforce connection and return status"""
+    from src.services.integrations.salesforce_service import SalesforceService
+    
+    sf = SalesforceService()
+    
+    if not sf.is_enabled():
+        return {
+            "service": "salesforce",
+            "connected": False,
+            "error": "Salesforce not configured or connection failed"
+        }
+        
+    try:
+        is_connected = sf.test_connection()
+        return {
+            "service": "salesforce",
+            "connected": is_connected,
+            "username": sf.username
+        }
+    except Exception as e:
+        return {
+            "service": "salesforce",
+            "connected": False,
+            "error": str(e)
+        }
