@@ -6,12 +6,64 @@ Welcome to the **VigilAI** setup wizard. This guide will help you configure the 
 
 ---
 
+## 🔧 Priority 0: Environment Setup (Required)
+
+### 1. Install Dependencies
+
+```powershell
+# Backend
+cd backend
+pip install -r requirements.txt
+
+# Frontend
+cd ../frontend
+npm install
+```
+
+### 2. Environment Configuration
+
+Copy the example env file and configure:
+
+```powershell
+cp backend/.env.example backend/.env
+```
+
+**Required settings:**
+```env
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/vigilai
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-secret-key
+APP_ENV=development
+```
+
+### 3. Database & Redis
+
+```powershell
+# Start PostgreSQL and Redis (Docker)
+docker-compose up -d postgres redis
+
+# Or run locally:
+# - PostgreSQL on port 5432
+# - Redis on port 6379
+```
+
+### 4. Run Tests (Verify Installation)
+
+```powershell
+cd backend
+python -m pytest tests/test_circuit_breaker.py tests/test_dead_letter_queue.py -v
+```
+
+> **Expected**: All tests should pass ✅
+
+---
+
 ## 🚀 Priority 1: Intelligence Engines (Required)
 
 VigilAI needs these to "think" and find information.
 
-### 1. Google Gemini (Log Analysis)
-*Used for: AI-powered root cause analysis of system logs.*
+### Google Gemini (AI Analysis)
+*Used for: AI-powered analysis, battlecard generation, and root cause analysis.*
 
 1.  **Get Key**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey).
 2.  **Generate**: Create API key.
@@ -28,7 +80,7 @@ VigilAI needs these to "think" and find information.
 
 Connect VigilAI to where your team works.
 
-### 3. Slack Integration (Real-time Alerts)
+### Slack Integration (Real-time Alerts)
 *Used for: Notifying you when a competitor changes pricing, hires executives, or launches products.*
 
 1.  **Create App**: Go to [Slack API Apps](https://api.slack.com/apps) -> **Create New App** -> **From Scratch**.
@@ -49,7 +101,7 @@ Connect VigilAI to where your team works.
     SLACK_CHANNEL_ID=Cxxxxxxx
     ```
 
-### 4. Notion Integration (Battlecards)
+### Notion Integration (Battlecards)
 *Used for: Publishing beautiful battlecards for your sales team.*
 
 1.  **Create Integration**: Go to [Notion My Integrations](https://www.notion.so/my-integrations).
@@ -67,7 +119,7 @@ Connect VigilAI to where your team works.
     NOTION_DATABASE_ID=xxxxxxxxxxxxxxxx
     ```
 
-### 5. Salesforce Integration (CRM)
+### Salesforce Integration (CRM)
 *Used for: Syncing competitor data with your sales pipeline.*
 
 1.  **Create App**: Log in to Salesforce Setup -> **App Manager** -> **New Connected App**.
@@ -109,6 +161,28 @@ VigilAI uses n8n to orchestrate scheduled scraping.
 *   One by one, it triggers a deep scrape.
 *   The backend (VigilAI) processes the data and sends **Slack Alerts** if new insights are found!
 
+---
+
+## 🧪 Running the Application
+
+### Development Mode
+
+```powershell
+# Terminal 1: Backend
+cd backend
+uvicorn src.main:app --reload
+
+# Terminal 2: Frontend
+cd frontend
+npm run dev
+```
+
+### Verify Everything Works
+
+1. **Health Check**: `curl http://localhost:8000/health`
+2. **Detailed Health**: `curl http://localhost:8000/health/detailed`
+3. **Circuit Breakers**: `curl http://localhost:8000/system/circuit-breakers`
+4. **DLQ Status**: `curl http://localhost:8000/system/dlq`
 
 ---
 
@@ -121,9 +195,32 @@ Once you have added these to your `.env` file, restart your backend:
 uvicorn src.main:app --reload
 ```
 
-Then run the verification tool again:
+Then run the verification tool:
 ```powershell
 python tools/verify_integrations.py
 ```
 
 You should see all ✅ green checks!
+
+---
+
+## 🔍 System Design Features
+
+VigilAI now includes enterprise-grade reliability patterns:
+
+| Feature | Description | Endpoint |
+|---------|-------------|----------|
+| **Circuit Breaker** | Prevents cascading failures | `/system/circuit-breakers` |
+| **Dead Letter Queue** | Handles failed tasks | `/system/dlq` |
+| **Health Checks** | System status monitoring | `/health/detailed` |
+| **Request Tracing** | Request ID in all logs | Check `X-Request-ID` header |
+
+### Test Commands
+```powershell
+# Run all system design tests
+cd backend
+python -m pytest tests/test_circuit_breaker.py tests/test_dead_letter_queue.py -v
+
+# Run full test suite
+python -m pytest tests/ -v
+```

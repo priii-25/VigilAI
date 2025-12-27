@@ -238,7 +238,16 @@ class DeadLetterQueue:
         pending_count = await self.redis.zcard(self.retry_key)
         
         stats = await self.redis.hgetall(self.stats_key)
-        stats = {k.decode(): int(v) for k, v in stats.items()} if stats else {}
+        # Handle both bytes (real Redis) and strings (mocks)
+        if stats:
+            parsed = {}
+            for k, v in stats.items():
+                key = k.decode() if isinstance(k, bytes) else k
+                val = int(v.decode() if isinstance(v, bytes) else v)
+                parsed[key] = val
+            stats = parsed
+        else:
+            stats = {}
         
         return {
             "dead_letter_count": dlq_count,
