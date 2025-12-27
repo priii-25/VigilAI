@@ -232,3 +232,50 @@ async def retry_dead_letter(task_id: str):
     if success:
         return {"message": f"Task {task_id} queued for retry"}
     return {"error": f"Task {task_id} not found in DLQ"}
+
+
+@app.get("/system/slack/test")
+async def test_slack_connection():
+    """Test Slack connection and return status"""
+    from src.services.integrations.slack_service import get_slack_service
+    
+    slack = get_slack_service()
+    status = await slack.test_connection()
+    
+    return {
+        "service": "slack",
+        **status
+    }
+
+
+@app.post("/system/slack/send-test")
+async def send_test_slack_message():
+    """Send a test message to verify Slack is working"""
+    from src.services.integrations.slack_service import get_slack_service
+    
+    slack = get_slack_service()
+    
+    if not slack.is_enabled():
+        return {"error": "Slack not configured"}
+    
+    try:
+        result = await slack.send_competitor_alert({
+            "id": "test-123",
+            "title": "🧪 Test Alert from VigilAI",
+            "update_type": "test",
+            "impact_score": 5,
+            "severity": "low",
+            "summary": "This is a test message to verify your Slack integration is working correctly!",
+            "source_url": "https://vigilai.dev"
+        })
+        
+        return {
+            "success": result,
+            "message": "Test alert sent to Slack!" if result else "Failed to send test alert"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
