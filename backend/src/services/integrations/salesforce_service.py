@@ -1,18 +1,25 @@
 """
 Salesforce CRM integration service
 Push battlecard kill points and competitor intel to Salesforce opportunities
-Production-ready with error handling and retry logic
+Production-ready with OAuth2 authentication and circuit breaker protection
 """
 from typing import Dict, List, Optional
 from simple_salesforce import Salesforce, SalesforceAuthenticationFailed
 from loguru import logger
 from src.core.config import settings
+from src.core.circuit_breaker import with_circuit_breaker, CIRCUIT_BREAKERS
 from datetime import datetime
 import json
+import requests
 
 
 class SalesforceService:
-    """Salesforce CRM integration for competitive intelligence"""
+    """
+    Salesforce CRM integration for competitive intelligence.
+    
+    Uses OAuth2 authentication (not SOAP) for compatibility with
+    newer Salesforce orgs that have SOAP API disabled.
+    """
     
     def __init__(self):
         self.client_id = settings.SALESFORCE_CLIENT_ID
@@ -21,39 +28,86 @@ class SalesforceService:
         self.password = settings.SALESFORCE_PASSWORD
         self.security_token = settings.SALESFORCE_SECURITY_TOKEN
         self.sf = None
+        self._enabled = False
         
         if self._is_configured():
             self._connect()
     
     def _is_configured(self) -> bool:
         """Check if Salesforce credentials are configured"""
+        # OAuth2 flow requires client_id and client_secret
         return bool(
+            self.client_id and
+            self.client_secret and
             self.username and
-            self.password and
-            self.security_token
+            self.password
         )
     
+    def is_enabled(self) -> bool:
+        """Check if Salesforce is connected"""
+        return self._enabled and self.sf is not None
+    
+    def is_healthy(self) -> bool:
+        """Check circuit breaker health"""
+        breaker = CIRCUIT_BREAKERS.get("salesforce_api")
+        if breaker:
+            return breaker.state.value == "closed"
+        return True
+    
     def _connect(self):
-        """Establish connection to Salesforce"""
+        """Establish connection to Salesforce using OAuth2"""
         try:
-            logger.info("Connecting to Salesforce...")
+            logger.info("Connecting to Salesforce via OAuth2...")
             
-            self.sf = Salesforce(
-                username=self.username,
-                password=self.password,
-                security_token=self.security_token,
-                client_id=self.client_id
-            )
+            # OAuth2 Password Grant flow
+            token_url = "https://login.salesforce.com/services/oauth2/token"
             
-            logger.info("Successfully connected to Salesforce")
+            # Combine password with security token
+            password_with_token = f"{self.password}{self.security_token}" if self.security_token else self.password
+            
+            payload = {
+                "grant_type": "password",
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "username": self.username,
+                "password": password_with_token
+            }
+            
+            response = requests.post(token_url, data=payload, timeout=30)
+            
+            if response.status_code == 200:
+                auth_data = response.json()
+                access_token = auth_data["access_token"]
+                instance_url = auth_data["instance_url"]
+                
+                # Connect using the access token
+                self.sf = Salesforce(
+                    instance_url=instance_url,
+                    session_id=access_token
+                )
+                
+                self._enabled = True
+                logger.info(f"Successfully connected to Salesforce: {instance_url}")
+            else:
+                error = response.json().get("error_description", response.text)
+                logger.error(f"Salesforce OAuth2 failed: {error}")
+                self.sf = None
+                self._enabled = False
             
         except SalesforceAuthenticationFailed as e:
             logger.error(f"Salesforce authentication failed: {str(e)}")
             self.sf = None
+            self._enabled = False
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error connecting to Salesforce: {str(e)}")
+            self.sf = None
+            self._enabled = False
         except Exception as e:
             logger.error(f"Error connecting to Salesforce: {str(e)}")
             self.sf = None
+            self._enabled = False
     
+    @with_circuit_breaker("salesforce_api")
     def push_kill_points_to_opportunity(
         self,
         opportunity_id: str,
