@@ -1,0 +1,602 @@
+{
+    "name": "VigilAI Competitor Monitoring",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 9
+                        },
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 14
+                        },
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 18
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule (3x Daily)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "schedule-trigger"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/competitors/",
+                "method": "GET",
+                "authentication": "none",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "name": "Get All Competitors",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                300,
+                300
+            ],
+            "id": "get-competitors",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.error }}",
+                            "operation": "isEmpty"
+                        }
+                    ]
+                }
+            },
+            "name": "Check API Success",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ],
+            "id": "check-api-success"
+        },
+        {
+            "parameters": {
+                "channel": "#vigilai-alerts",
+                "text": "⚠️ *VigilAI API Error*\n\nFailed to fetch competitors list. Please check the backend service.\n\nError: {{ $json.error || 'Unknown error' }}",
+                "otherOptions": {}
+            },
+            "name": "Alert API Failure",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                700,
+                450
+            ],
+            "id": "alert-api-failure",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "batchSize": 1,
+                "options": {
+                    "reset": false
+                }
+            },
+            "name": "Process Each Competitor",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                700,
+                300
+            ],
+            "id": "split-competitors"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/competitors/{{ $json.id }}/scrape",
+                "method": "POST",
+                "authentication": "none",
+                "options": {
+                    "timeout": 60000
+                }
+            },
+            "name": "Trigger Scrape",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                900,
+                300
+            ],
+            "id": "trigger-scrape",
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 3,
+            "waitBetweenTries": 5000
+        },
+        {
+            "parameters": {
+                "amount": 90,
+                "unit": "seconds"
+            },
+            "name": "Wait for Scrape",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                300
+            ],
+            "id": "wait-scrape"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/competitors/{{ $('Process Each Competitor').item.json.id }}/updates?limit=10",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Get Recent Updates",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1300,
+                300
+            ],
+            "id": "get-updates"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.length }}",
+                            "operation": "larger",
+                            "value2": 0
+                        }
+                    ]
+                }
+            },
+            "name": "Has Updates?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1500,
+                300
+            ],
+            "id": "has-updates"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Filter and categorize updates\nconst updates = $input.all();\nconst competitorName = $('Process Each Competitor').item.json.name;\n\nconst highImpact = [];\nconst normalUpdates = [];\n\nfor (const item of updates) {\n  const update = item.json;\n  if (update.impact_score >= 7) {\n    highImpact.push({\n      ...update,\n      competitor_name: competitorName\n    });\n  } else {\n    normalUpdates.push({\n      ...update,\n      competitor_name: competitorName\n    });\n  }\n}\n\nreturn [\n  { json: { type: 'high_impact', updates: highImpact, count: highImpact.length } },\n  { json: { type: 'normal', updates: normalUpdates, count: normalUpdates.length } }\n];"
+            },
+            "name": "Categorize by Impact",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                300
+            ],
+            "id": "categorize-impact"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.type }}",
+                            "operation": "equals",
+                            "value2": "high_impact"
+                        }
+                    ],
+                    "number": [
+                        {
+                            "value1": "={{ $json.count }}",
+                            "operation": "larger",
+                            "value2": 0
+                        }
+                    ],
+                    "combineOperation": "all"
+                }
+            },
+            "name": "High Impact Check",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1900,
+                200
+            ],
+            "id": "high-impact-check"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel-urgent",
+                "text": "🚨 *HIGH PRIORITY COMPETITIVE INTEL*\n\n*{{ $json.updates[0].competitor_name }}* has {{ $json.count }} critical update(s)!\n\n{{ $json.updates.map(u => `• *${u.title}* (Impact: ${u.impact_score}/10)\\n  ${u.summary || 'No summary'}`).join('\\n\\n') }}\n\n<http://localhost:3000/competitors|View in VigilAI Dashboard>",
+                "attachments": [
+                    {
+                        "color": "#ff0000",
+                        "fields": [
+                            {
+                                "title": "Priority",
+                                "value": "🔴 HIGH",
+                                "short": true
+                            },
+                            {
+                                "title": "Action Required",
+                                "value": "Review battlecard",
+                                "short": true
+                            }
+                        ]
+                    }
+                ],
+                "otherOptions": {}
+            },
+            "name": "Urgent Slack Alert",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                2100,
+                100
+            ],
+            "id": "urgent-slack",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/competitor/{{ $('Process Each Competitor').item.json.id }}",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Get Battlecard",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                2300,
+                100
+            ],
+            "id": "get-battlecard",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.id }}",
+                            "operation": "isNotEmpty"
+                        }
+                    ]
+                }
+            },
+            "name": "Battlecard Exists?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                2500,
+                100
+            ],
+            "id": "battlecard-exists"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/{{ $json.id }}/sync-crm",
+                "method": "POST",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Sync to Salesforce",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                2700,
+                50
+            ],
+            "id": "sync-salesforce",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "📊 *Scrape Complete: {{ $('Process Each Competitor').item.json.name }}*\n\nFound {{ $json.count }} update(s) in this batch.\n\n{{ $json.updates.slice(0, 3).map(u => `• ${u.title}`).join('\\n') }}{{ $json.count > 3 ? `\\n...and ${$json.count - 3} more` : '' }}",
+                "otherOptions": {}
+            },
+            "name": "Normal Slack Update",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                2100,
+                350
+            ],
+            "id": "normal-slack",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "name": "Continue Loop",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                2900,
+                300
+            ],
+            "id": "continue-loop"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "✅ *VigilAI Monitoring Complete*\n\n📅 {{ $now.format('YYYY-MM-DD HH:mm') }}\n\nAll competitors have been scraped and analyzed.",
+                "otherOptions": {}
+            },
+            "name": "Completion Notice",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1100,
+                500
+            ],
+            "id": "completion-notice",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule (3x Daily)": {
+            "main": [
+                [
+                    {
+                        "node": "Get All Competitors",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get All Competitors": {
+            "main": [
+                [
+                    {
+                        "node": "Check API Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check API Success": {
+            "main": [
+                [
+                    {
+                        "node": "Process Each Competitor",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Alert API Failure",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Each Competitor": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger Scrape",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Completion Notice",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Trigger Scrape": {
+            "main": [
+                [
+                    {
+                        "node": "Wait for Scrape",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait for Scrape": {
+            "main": [
+                [
+                    {
+                        "node": "Get Recent Updates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Recent Updates": {
+            "main": [
+                [
+                    {
+                        "node": "Has Updates?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Updates?": {
+            "main": [
+                [
+                    {
+                        "node": "Categorize by Impact",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Categorize by Impact": {
+            "main": [
+                [
+                    {
+                        "node": "High Impact Check",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "High Impact Check": {
+            "main": [
+                [
+                    {
+                        "node": "Urgent Slack Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Normal Slack Update",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Urgent Slack Alert": {
+            "main": [
+                [
+                    {
+                        "node": "Get Battlecard",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Battlecard": {
+            "main": [
+                [
+                    {
+                        "node": "Battlecard Exists?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Battlecard Exists?": {
+            "main": [
+                [
+                    {
+                        "node": "Sync to Salesforce",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Sync to Salesforce": {
+            "main": [
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normal Slack Update": {
+            "main": [
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Continue Loop": {
+            "main": [
+                [
+                    {
+                        "node": "Process Each Competitor",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1",
+        "saveManualExecutions": true,
+        "callerPolicy": "workflowsFromSameOwner",
+        "errorWorkflow": ""
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "VigilAI",
+            "id": "vigilai-tag"
+        },
+        {
+            "name": "Competitor Monitoring",
+            "id": "monitoring-tag"
+        }
+    ],
+    "meta": {
+        "instanceId": "vigilai-instance"
+    }
+}

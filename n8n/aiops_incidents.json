@@ -1,0 +1,393 @@
+{
+    "name": "VigilAI AIOps Incidents",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "anomaly-detected",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "name": "Webhook: Anomaly",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "webhook-anomaly",
+            "webhookId": "anomaly-webhook"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Parse anomaly data\nconst data = $input.first().json;\n\n// Determine severity based on anomaly score\nlet severity = 'low';\nif (data.anomaly_score >= 0.9) severity = 'critical';\nelse if (data.anomaly_score >= 0.7) severity = 'high';\nelse if (data.anomaly_score >= 0.5) severity = 'medium';\n\nreturn [{\n  json: {\n    log_message: data.log_message || data.message || 'Unknown error',\n    anomaly_score: data.anomaly_score || 0.5,\n    log_source: data.log_source || data.source || 'system',\n    severity: severity,\n    timestamp: new Date().toISOString(),\n    needs_immediate_action: severity === 'critical' || severity === 'high'\n  }\n}];"
+            },
+            "name": "Parse Anomaly",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                300,
+                300
+            ],
+            "id": "parse-anomaly"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/logs/analyze",
+                "method": "POST",
+                "authentication": "none",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "logs",
+                            "value": "={{ [$json.log_message] }}"
+                        },
+                        {
+                            "name": "source",
+                            "value": "={{ $json.log_source }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Create Incident",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                500,
+                300
+            ],
+            "id": "create-incident",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/logs/rca/query",
+                "method": "POST",
+                "authentication": "none",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "question",
+                            "value": "What is the root cause of this error and how can it be fixed?"
+                        },
+                        {
+                            "name": "logs",
+                            "value": "={{ [$('Parse Anomaly').item.json.log_message] }}"
+                        },
+                        {
+                            "name": "context",
+                            "value": "={{ { source: $('Parse Anomaly').item.json.log_source, severity: $('Parse Anomaly').item.json.severity } }}"
+                        }
+                    ]
+                },
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "name": "Run RCA Analysis",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                700,
+                300
+            ],
+            "id": "run-rca",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Combine anomaly data with RCA results\nconst anomaly = $('Parse Anomaly').item.json;\nconst rca = $input.first().json;\n\nreturn [{\n  json: {\n    ...anomaly,\n    root_cause: rca.root_cause || 'Unable to determine root cause',\n    recommendations: rca.recommendations || ['Investigate logs manually', 'Check system health'],\n    affected_components: rca.affected_components || ['Unknown'],\n    confidence: rca.confidence || 0.5\n  }\n}];"
+            },
+            "name": "Combine Results",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                300
+            ],
+            "id": "combine-results"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.severity }}",
+                            "operation": "equals",
+                            "value2": "critical"
+                        }
+                    ]
+                }
+            },
+            "name": "Is Critical?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                200
+            ],
+            "id": "is-critical"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.severity }}",
+                            "operation": "equals",
+                            "value2": "high"
+                        }
+                    ]
+                }
+            },
+            "name": "Is High?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                400
+            ],
+            "id": "is-high"
+        },
+        {
+            "parameters": {
+                "channel": "#vigilai-incidents",
+                "text": "🚨🚨🚨 *CRITICAL INCIDENT DETECTED* 🚨🚨🚨\n\n*Severity:* 🔴 CRITICAL\n*Source:* {{ $json.log_source }}\n*Score:* {{ ($json.anomaly_score * 100).toFixed(1) }}%\n\n*Error:*\n```{{ $json.log_message }}```\n\n*Root Cause Analysis:*\n{{ $json.root_cause }}\n\n*Affected Components:*\n{{ $json.affected_components.map(c => `• ${c}`).join('\\n') }}\n\n*Recommended Actions:*\n{{ $json.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\\n') }}\n\n<http://localhost:3000/ops|View in AIOps Dashboard>",
+                "attachments": [
+                    {
+                        "color": "#dc2626",
+                        "fields": [
+                            {
+                                "title": "Confidence",
+                                "value": "={{ ($json.confidence * 100).toFixed(0) }}%",
+                                "short": true
+                            },
+                            {
+                                "title": "Time",
+                                "value": "={{ $json.timestamp }}",
+                                "short": true
+                            }
+                        ]
+                    }
+                ],
+                "otherOptions": {
+                    "unfurl_links": false
+                }
+            },
+            "name": "Critical Alert",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1300,
+                100
+            ],
+            "id": "critical-alert",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "channel": "#vigilai-incidents",
+                "text": "⚠️ *HIGH SEVERITY INCIDENT*\n\n*Severity:* 🟠 HIGH\n*Source:* {{ $json.log_source }}\n*Score:* {{ ($json.anomaly_score * 100).toFixed(1) }}%\n\n*Error:*\n```{{ $json.log_message }}```\n\n*Root Cause:* {{ $json.root_cause }}\n\n*Recommendations:*\n{{ $json.recommendations.slice(0, 3).map((r, i) => `${i + 1}. ${r}`).join('\\n') }}\n\n<http://localhost:3000/ops|View Details>",
+                "attachments": [
+                    {
+                        "color": "#f97316"
+                    }
+                ],
+                "otherOptions": {}
+            },
+            "name": "High Alert",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1300,
+                350
+            ],
+            "id": "high-alert",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Store for batch summary (low/medium severity)\nconst item = $input.first().json;\n\n// In production, this would store to a database or state\n// For now, just format for potential batch processing\nreturn [{\n  json: {\n    batched: true,\n    severity: item.severity,\n    summary: `[${item.severity.toUpperCase()}] ${item.log_source}: ${item.log_message.substring(0, 100)}...`,\n    timestamp: item.timestamp\n  }\n}];"
+            },
+            "name": "Queue for Batch",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1300,
+                500
+            ],
+            "id": "queue-batch"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ success: true, severity: $('Parse Anomaly').item.json.severity, incident_created: true }) }}"
+            },
+            "name": "Respond Success",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                1500,
+                300
+            ],
+            "id": "respond-success"
+        }
+    ],
+    "connections": {
+        "Webhook: Anomaly": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Anomaly",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Anomaly": {
+            "main": [
+                [
+                    {
+                        "node": "Create Incident",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create Incident": {
+            "main": [
+                [
+                    {
+                        "node": "Run RCA Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Run RCA Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Combine Results",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Combine Results": {
+            "main": [
+                [
+                    {
+                        "node": "Is Critical?",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Is High?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Critical?": {
+            "main": [
+                [
+                    {
+                        "node": "Critical Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Queue for Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is High?": {
+            "main": [
+                [
+                    {
+                        "node": "High Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Queue for Batch",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Critical Alert": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "High Alert": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Queue for Batch": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "VigilAI",
+            "id": "vigilai-tag"
+        },
+        {
+            "name": "AIOps",
+            "id": "aiops-tag"
+        }
+    ]
+}

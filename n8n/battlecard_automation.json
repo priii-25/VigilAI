@@ -1,0 +1,436 @@
+{
+    "name": "VigilAI Battlecard Automation",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "battlecard-trigger",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "name": "Webhook: New Update",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "webhook-trigger",
+            "webhookId": "battlecard-webhook"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extract competitor info from webhook payload\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    competitor_id: data.competitor_id,\n    competitor_name: data.competitor_name || 'Unknown',\n    update_type: data.update_type,\n    impact_score: data.impact_score || 5,\n    summary: data.summary || '',\n    should_create_battlecard: data.impact_score >= 6\n  }\n}];"
+            },
+            "name": "Parse Webhook Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                300,
+                300
+            ],
+            "id": "parse-webhook"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.should_create_battlecard }}",
+                            "operation": "equal",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "name": "Should Process?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ],
+            "id": "should-process"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/competitor/{{ $json.competitor_id }}",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Check Existing Battlecard",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                700,
+                300
+            ],
+            "id": "check-battlecard",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.id }}",
+                            "operation": "isNotEmpty"
+                        }
+                    ]
+                }
+            },
+            "name": "Battlecard Exists?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                900,
+                300
+            ],
+            "id": "battlecard-exists"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/battlecards/",
+                "method": "POST",
+                "authentication": "none",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "competitor_id",
+                            "value": "={{ $('Parse Webhook Data').item.json.competitor_id }}"
+                        },
+                        {
+                            "name": "title",
+                            "value": "=Battlecard: {{ $('Parse Webhook Data').item.json.competitor_name }}"
+                        },
+                        {
+                            "name": "overview",
+                            "value": "=Auto-generated battlecard for {{ $('Parse Webhook Data').item.json.competitor_name }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Create New Battlecard",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1100,
+                400
+            ],
+            "id": "create-battlecard"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "📋 *New Battlecard Created*\n\nA battlecard has been auto-generated for *{{ $('Parse Webhook Data').item.json.competitor_name }}*\n\nTrigger: {{ $('Parse Webhook Data').item.json.update_type }} update (Impact: {{ $('Parse Webhook Data').item.json.impact_score }}/10)\n\n👉 <http://localhost:3000/battlecards|Review & Approve>",
+                "otherOptions": {}
+            },
+            "name": "Notify New Battlecard",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1300,
+                400
+            ],
+            "id": "notify-new",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Store battlecard ID for publishing\nconst battlecard = $input.first().json;\nconst webhookData = $('Parse Webhook Data').item.json;\n\nreturn [{\n  json: {\n    battlecard_id: battlecard.id,\n    competitor_name: webhookData.competitor_name,\n    is_published: battlecard.is_published || false,\n    needs_update: true\n  }\n}];"
+            },
+            "name": "Prepare Update",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1100,
+                200
+            ],
+            "id": "prepare-update"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $json.is_published }}",
+                            "operation": "equal",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "name": "Already Published?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1300,
+                200
+            ],
+            "id": "check-published"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/{{ $json.battlecard_id }}/publish",
+                "method": "POST",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Publish to Notion",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1500,
+                100
+            ],
+            "id": "publish-notion",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/{{ $json.battlecard_id }}/sync-crm",
+                "method": "POST",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Sync to Salesforce",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1700,
+                100
+            ],
+            "id": "sync-salesforce",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "✅ *Battlecard Updated & Synced*\n\n*{{ $('Prepare Update').item.json.competitor_name }}* battlecard has been:\n• ✓ Published to Notion\n• ✓ Synced to Salesforce\n\n<http://localhost:3000/battlecards|View Dashboard>",
+                "otherOptions": {}
+            },
+            "name": "Notify Sync Complete",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1900,
+                100
+            ],
+            "id": "notify-sync",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "🔄 *Battlecard Update Pending*\n\n*{{ $json.competitor_name }}* battlecard needs review before re-publishing.\n\nPlease review and approve changes.\n\n<http://localhost:3000/battlecards|Review Now>",
+                "otherOptions": {}
+            },
+            "name": "Request Review",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1500,
+                250
+            ],
+            "id": "request-review",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ success: true, message: 'Battlecard workflow triggered' }) }}"
+            },
+            "name": "Respond OK",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                700,
+                500
+            ],
+            "id": "respond-ok"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ success: true, message: 'Update skipped - impact too low' }) }}"
+            },
+            "name": "Respond Skipped",
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1,
+            "position": [
+                700,
+                150
+            ],
+            "id": "respond-skipped"
+        }
+    ],
+    "connections": {
+        "Webhook: New Update": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Webhook Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Webhook Data": {
+            "main": [
+                [
+                    {
+                        "node": "Should Process?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Should Process?": {
+            "main": [
+                [
+                    {
+                        "node": "Check Existing Battlecard",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Respond OK",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond Skipped",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Existing Battlecard": {
+            "main": [
+                [
+                    {
+                        "node": "Battlecard Exists?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Battlecard Exists?": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Update",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Create New Battlecard",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create New Battlecard": {
+            "main": [
+                [
+                    {
+                        "node": "Notify New Battlecard",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Update": {
+            "main": [
+                [
+                    {
+                        "node": "Already Published?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Already Published?": {
+            "main": [
+                [
+                    {
+                        "node": "Publish to Notion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Request Review",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Publish to Notion": {
+            "main": [
+                [
+                    {
+                        "node": "Sync to Salesforce",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Sync to Salesforce": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Sync Complete",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "VigilAI",
+            "id": "vigilai-tag"
+        },
+        {
+            "name": "Battlecards",
+            "id": "battlecards-tag"
+        }
+    ]
+}

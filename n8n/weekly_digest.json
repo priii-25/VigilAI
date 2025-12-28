@@ -1,0 +1,260 @@
+{
+    "name": "VigilAI Weekly Digest",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "cronExpression",
+                            "expression": "0 8 * * 1"
+                        }
+                    ]
+                }
+            },
+            "name": "Monday 8 AM",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                100,
+                300
+            ],
+            "id": "schedule-monday"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/analytics/metrics",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Get Analytics Metrics",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                300,
+                300
+            ],
+            "id": "get-metrics"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/competitors/",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Get Competitors",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                300,
+                450
+            ],
+            "id": "get-competitors"
+        },
+        {
+            "parameters": {
+                "mode": "combine",
+                "combinationMode": "mergeByPosition",
+                "options": {}
+            },
+            "name": "Merge Data",
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 2,
+            "position": [
+                500,
+                350
+            ],
+            "id": "merge-data"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Build weekly digest report\nconst items = $input.all();\nconst metrics = items[0]?.json || {};\nconst competitors = items[1]?.json || [];\n\nconst now = new Date();\nconst weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);\n\n// Format date range\nconst dateRange = `${weekAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;\n\n// Build summary\nconst digest = {\n  date_range: dateRange,\n  total_competitors: metrics.total_competitors || competitors.length || 0,\n  total_updates: metrics.total_updates || 0,\n  critical_alerts: metrics.critical_alerts || 0,\n  battlecards_updated: metrics.battlecards_count || 0,\n  top_competitors: (competitors.slice ? competitors.slice(0, 5) : []).map(c => c.name || 'Unknown'),\n  highlights: []\n};\n\n// Add highlights based on metrics\nif (digest.critical_alerts > 0) {\n  digest.highlights.push(`🚨 ${digest.critical_alerts} critical competitive alerts this week`);\n}\nif (digest.total_updates > 10) {\n  digest.highlights.push(`📊 High activity week with ${digest.total_updates} competitor updates`);\n}\nif (digest.battlecards_updated > 0) {\n  digest.highlights.push(`📋 ${digest.battlecards_updated} battlecards updated`);\n}\n\nif (digest.highlights.length === 0) {\n  digest.highlights.push('✅ Quiet week - no major competitive movements detected');\n}\n\nreturn [{ json: digest }];"
+            },
+            "name": "Build Digest",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                350
+            ],
+            "id": "build-digest"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "📰 *Weekly Competitive Intelligence Digest*\n\n📅 *{{ $json.date_range }}*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📊 *This Week's Numbers*\n• Competitors Monitored: {{ $json.total_competitors }}\n• Total Updates Detected: {{ $json.total_updates }}\n• Critical Alerts: {{ $json.critical_alerts }}\n• Battlecards Updated: {{ $json.battlecards_updated }}\n\n🏢 *Top Competitors*\n{{ $json.top_competitors.map((c, i) => `${i + 1}. ${c}`).join('\\n') }}\n\n✨ *Highlights*\n{{ $json.highlights.map(h => `• ${h}`).join('\\n') }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n\n<http://localhost:3000|View Full Dashboard> | <http://localhost:3000/battlecards|Battlecards>",
+                "attachments": [
+                    {
+                        "color": "#2563eb",
+                        "fields": [
+                            {
+                                "title": "Report Type",
+                                "value": "Weekly Digest",
+                                "short": true
+                            },
+                            {
+                                "title": "Generated",
+                                "value": "Automated",
+                                "short": true
+                            }
+                        ]
+                    }
+                ],
+                "otherOptions": {}
+            },
+            "name": "Post to Slack",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                900,
+                300
+            ],
+            "id": "slack-digest",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "fromEmail": "vigilai@company.com",
+                "toEmail": "team@company.com",
+                "subject": "=VigilAI Weekly Digest - {{ $json.date_range }}",
+                "emailType": "html",
+                "html": "=<html>\n<body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;\">\n    <h1 style=\"color: white; margin: 0;\">📰 Weekly Competitive Intel</h1>\n    <p style=\"color: rgba(255,255,255,0.9); margin: 10px 0 0;\">{{ $json.date_range }}</p>\n  </div>\n  \n  <div style=\"padding: 30px; background: #f8f9fa;\">\n    <h2 style=\"color: #1a1a1a; border-bottom: 2px solid #667eea; padding-bottom: 10px;\">📊 This Week's Numbers</h2>\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr><td style=\"padding: 10px; border-bottom: 1px solid #ddd;\">Competitors Monitored</td><td style=\"text-align: right; font-weight: bold;\">{{ $json.total_competitors }}</td></tr>\n      <tr><td style=\"padding: 10px; border-bottom: 1px solid #ddd;\">Total Updates</td><td style=\"text-align: right; font-weight: bold;\">{{ $json.total_updates }}</td></tr>\n      <tr><td style=\"padding: 10px; border-bottom: 1px solid #ddd;\">Critical Alerts</td><td style=\"text-align: right; font-weight: bold; color: {{ $json.critical_alerts > 0 ? '#dc2626' : '#22c55e' }};\">{{ $json.critical_alerts }}</td></tr>\n      <tr><td style=\"padding: 10px;\">Battlecards Updated</td><td style=\"text-align: right; font-weight: bold;\">{{ $json.battlecards_updated }}</td></tr>\n    </table>\n    \n    <h2 style=\"color: #1a1a1a; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin-top: 30px;\">✨ Highlights</h2>\n    <ul style=\"padding-left: 20px;\">\n      {{ $json.highlights.map(h => `<li style=\"padding: 5px 0;\">${h}</li>`).join('') }}\n    </ul>\n    \n    <div style=\"text-align: center; margin-top: 30px;\">\n      <a href=\"http://localhost:3000\" style=\"background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;\">View Dashboard</a>\n    </div>\n  </div>\n  \n  <div style=\"text-align: center; padding: 20px; color: #666; font-size: 12px;\">\n    <p>Generated by VigilAI • Competitive Intelligence Platform</p>\n  </div>\n</body>\n</html>",
+                "options": {}
+            },
+            "name": "Send Email Digest",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2,
+            "position": [
+                900,
+                450
+            ],
+            "id": "email-digest",
+            "credentials": {
+                "smtp": {
+                    "id": "smtp-credentials",
+                    "name": "SMTP"
+                }
+            }
+        },
+        {
+            "parameters": {},
+            "name": "Complete",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                350
+            ],
+            "id": "complete"
+        }
+    ],
+    "connections": {
+        "Monday 8 AM": {
+            "main": [
+                [
+                    {
+                        "node": "Get Analytics Metrics",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Get Competitors",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Analytics Metrics": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Competitors": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Data",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Merge Data": {
+            "main": [
+                [
+                    {
+                        "node": "Build Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Digest": {
+            "main": [
+                [
+                    {
+                        "node": "Post to Slack",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send Email Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Post to Slack": {
+            "main": [
+                [
+                    {
+                        "node": "Complete",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Email Digest": {
+            "main": [
+                [
+                    {
+                        "node": "Complete",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "VigilAI",
+            "id": "vigilai-tag"
+        },
+        {
+            "name": "Digest",
+            "id": "digest-tag"
+        }
+    ]
+}
