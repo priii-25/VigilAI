@@ -6,6 +6,7 @@ Automation workflows for competitive intelligence monitoring and incident manage
 
 | Workflow | Trigger | Description |
 |----------|---------|-------------|
+| `complete_data_collection.json` | 4x daily + webhook | **Full data collection** across ALL sources (Pricing, News, Social, Jobs, Reviews, SEO) |
 | `competitor_monitoring.json` | Schedule: 9 AM, 2 PM, 6 PM | Scrapes competitors, routes alerts by impact score |
 | `battlecard_automation.json` | Webhook | Auto-creates/updates battlecards, syncs to Notion & Salesforce |
 | `weekly_digest.json` | Monday 8 AM | Weekly intelligence summary via Slack + Email |

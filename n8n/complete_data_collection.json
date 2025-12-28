@@ -1,0 +1,612 @@
+{
+    "name": "VigilAI Complete Data Collection",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 6
+                        },
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 12
+                        },
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 18
+                        },
+                        {
+                            "field": "hours",
+                            "triggerAtHour": 22
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule (4x Daily)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1,
+            "position": [
+                100,
+                400
+            ],
+            "id": "schedule-4x"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "manual-collection",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "name": "Webhook: Manual Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                250
+            ],
+            "id": "webhook-manual"
+        },
+        {
+            "parameters": {},
+            "name": "Merge Triggers",
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 2,
+            "position": [
+                300,
+                350
+            ],
+            "id": "merge-triggers"
+        },
+        {
+            "parameters": {
+                "url": "http://backend:8000/api/v1/competitors/",
+                "method": "GET",
+                "authentication": "none",
+                "options": {
+                    "timeout": 30000
+                }
+            },
+            "name": "Get All Competitors",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                500,
+                350
+            ],
+            "id": "get-competitors"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "🚀 *Data Collection Cycle Started*\n\n📊 Starting comprehensive data collection across all sources:\n• 🌐 Website Scraping (Pricing, Careers, Content)\n• 📰 News Monitoring (Google News, RSS)\n• 📱 Social Media (Twitter, LinkedIn)\n• 💼 Job Boards (Greenhouse, Lever)\n• ⭐ Review Platforms (G2, Gartner)\n• 🔍 SEO Tracking (Rankings, Sitemaps)\n\n_{{ $json.length || 0 }} competitors to process..._",
+                "otherOptions": {}
+            },
+            "name": "Announce Start",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                700,
+                200
+            ],
+            "id": "announce-start",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "batchSize": 1,
+                "options": {}
+            },
+            "name": "Process Each Competitor",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                700,
+                350
+            ],
+            "id": "split-batches"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Prepare competitor info for scraping\nconst competitor = $input.first().json;\n\nreturn [{\n  json: {\n    id: competitor.id,\n    name: competitor.name,\n    domain: competitor.domain,\n    pricing_url: competitor.pricing_url || '',\n    careers_url: competitor.careers_url || '',\n    blog_url: competitor.blog_url || '',\n    scrape_start: new Date().toISOString()\n  }\n}];"
+            },
+            "name": "Prepare Competitor",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                900,
+                350
+            ],
+            "id": "prepare-competitor"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/competitors/{{ $json.id }}/scrape",
+                "method": "POST",
+                "authentication": "none",
+                "options": {
+                    "timeout": 120000
+                }
+            },
+            "name": "Trigger Full Scrape",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1100,
+                350
+            ],
+            "id": "trigger-scrape",
+            "onError": "continueRegularOutput",
+            "retryOnFail": true,
+            "maxTries": 2,
+            "waitBetweenTries": 10000
+        },
+        {
+            "parameters": {
+                "amount": 120,
+                "unit": "seconds"
+            },
+            "name": "Wait for Processing",
+            "type": "n8n-nodes-base.wait",
+            "typeVersion": 1,
+            "position": [
+                1300,
+                350
+            ],
+            "id": "wait-processing"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/competitors/{{ $('Prepare Competitor').item.json.id }}/updates?limit=20",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Get Latest Updates",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                1500,
+                350
+            ],
+            "id": "get-updates"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Analyze collected data by source\nconst updates = $input.all().map(i => i.json);\nconst competitorName = $('Prepare Competitor').item.json.name;\n\nconst bySource = {\n  pricing: updates.filter(u => u.update_type === 'pricing'),\n  hiring: updates.filter(u => u.update_type === 'hiring'),\n  news: updates.filter(u => u.update_type === 'news'),\n  social: updates.filter(u => u.update_type === 'social'),\n  reviews: updates.filter(u => u.update_type === 'reviews'),\n  seo: updates.filter(u => u.update_type === 'seo'),\n  content: updates.filter(u => u.update_type === 'content')\n};\n\nconst highImpact = updates.filter(u => u.impact_score >= 7);\n\nreturn [{\n  json: {\n    competitor_name: competitorName,\n    competitor_id: $('Prepare Competitor').item.json.id,\n    total_updates: updates.length,\n    high_impact_count: highImpact.length,\n    by_source: {\n      pricing: bySource.pricing.length,\n      hiring: bySource.hiring.length,\n      news: bySource.news.length,\n      social: bySource.social.length,\n      reviews: bySource.reviews.length,\n      seo: bySource.seo.length,\n      content: bySource.content.length\n    },\n    high_impact_updates: highImpact.slice(0, 3).map(u => ({\n      title: u.title,\n      category: u.category,\n      score: u.impact_score\n    }))\n  }\n}];"
+            },
+            "name": "Analyze by Source",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1700,
+                350
+            ],
+            "id": "analyze-sources"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.high_impact_count }}",
+                            "operation": "larger",
+                            "value2": 0
+                        }
+                    ]
+                }
+            },
+            "name": "Has High Impact?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1900,
+                350
+            ],
+            "id": "check-high-impact"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel-urgent",
+                "text": "🚨 *HIGH IMPACT INTEL DETECTED*\n\n*Competitor:* {{ $json.competitor_name }}\n*High Priority Updates:* {{ $json.high_impact_count }}\n\n{{ $json.high_impact_updates.map(u => `• *${u.title}* (${u.category}) - Score: ${u.score}/10`).join('\\n') }}\n\n*Data Collection Summary:*\n📊 Pricing: {{ $json.by_source.pricing }} | 💼 Hiring: {{ $json.by_source.hiring }}\n📰 News: {{ $json.by_source.news }} | 📱 Social: {{ $json.by_source.social }}\n⭐ Reviews: {{ $json.by_source.reviews }} | 🔍 SEO: {{ $json.by_source.seo }}\n\n<http://localhost:3000/competitors/{{ $json.competitor_id }}|View Details>",
+                "attachments": [
+                    {
+                        "color": "#ff0000"
+                    }
+                ],
+                "otherOptions": {}
+            },
+            "name": "Alert High Impact",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                2100,
+                250
+            ],
+            "id": "alert-high-impact",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/competitor/{{ $json.competitor_id }}",
+                "method": "GET",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Check Battlecard",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                2300,
+                250
+            ],
+            "id": "check-battlecard",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "number": [
+                        {
+                            "value1": "={{ $json.id }}",
+                            "operation": "isNotEmpty"
+                        }
+                    ]
+                }
+            },
+            "name": "Battlecard Exists?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                2500,
+                250
+            ],
+            "id": "battlecard-exists"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/{{ $json.id }}/sync-crm",
+                "method": "POST",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Sync to Salesforce",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                2700,
+                200
+            ],
+            "id": "sync-salesforce",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "url": "=http://backend:8000/api/v1/battlecards/{{ $json.id }}/publish",
+                "method": "POST",
+                "authentication": "none",
+                "options": {}
+            },
+            "name": "Update Notion",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4,
+            "position": [
+                2700,
+                300
+            ],
+            "id": "update-notion",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {},
+            "name": "Continue Loop",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                2900,
+                350
+            ],
+            "id": "continue-loop"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Aggregate all competitor results for summary\nconst allResults = $('Analyze by Source').all().map(i => i.json);\n\nconst totals = {\n  competitors: allResults.length,\n  total_updates: allResults.reduce((sum, r) => sum + r.total_updates, 0),\n  high_impact: allResults.reduce((sum, r) => sum + r.high_impact_count, 0),\n  by_source: {\n    pricing: allResults.reduce((sum, r) => sum + r.by_source.pricing, 0),\n    hiring: allResults.reduce((sum, r) => sum + r.by_source.hiring, 0),\n    news: allResults.reduce((sum, r) => sum + r.by_source.news, 0),\n    social: allResults.reduce((sum, r) => sum + r.by_source.social, 0),\n    reviews: allResults.reduce((sum, r) => sum + r.by_source.reviews, 0),\n    seo: allResults.reduce((sum, r) => sum + r.by_source.seo, 0),\n    content: allResults.reduce((sum, r) => sum + r.by_source.content, 0)\n  }\n};\n\nreturn [{ json: totals }];"
+            },
+            "name": "Build Summary",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1100,
+                550
+            ],
+            "id": "build-summary"
+        },
+        {
+            "parameters": {
+                "channel": "#competitive-intel",
+                "text": "✅ *Data Collection Cycle Complete*\n\n📊 *Summary*\n• Competitors Processed: {{ $json.competitors }}\n• Total Updates Collected: {{ $json.total_updates }}\n• High Impact Alerts: {{ $json.high_impact }}\n\n*By Data Source:*\n┌───────────────────────────────┐\n│ 🌐 Pricing:    {{ String($json.by_source.pricing).padStart(4) }} updates │\n│ 💼 Hiring:     {{ String($json.by_source.hiring).padStart(4) }} updates │\n│ 📰 News:       {{ String($json.by_source.news).padStart(4) }} updates │\n│ 📱 Social:     {{ String($json.by_source.social).padStart(4) }} updates │\n│ ⭐ Reviews:    {{ String($json.by_source.reviews).padStart(4) }} updates │\n│ 🔍 SEO:        {{ String($json.by_source.seo).padStart(4) }} updates │\n│ 📝 Content:    {{ String($json.by_source.content).padStart(4) }} updates │\n└───────────────────────────────┘\n\n<http://localhost:3000|Open Dashboard>",
+                "attachments": [
+                    {
+                        "color": "#22c55e"
+                    }
+                ],
+                "otherOptions": {}
+            },
+            "name": "Complete Summary",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2,
+            "position": [
+                1300,
+                550
+            ],
+            "id": "complete-summary",
+            "credentials": {
+                "slackApi": {
+                    "id": "slack-credentials",
+                    "name": "Slack API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule (4x Daily)": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Triggers",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook: Manual Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Merge Triggers",
+                        "type": "main",
+                        "index": 1
+                    }
+                ]
+            ]
+        },
+        "Merge Triggers": {
+            "main": [
+                [
+                    {
+                        "node": "Get All Competitors",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get All Competitors": {
+            "main": [
+                [
+                    {
+                        "node": "Announce Start",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Process Each Competitor",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Announce Start": {
+            "main": [
+                []
+            ]
+        },
+        "Process Each Competitor": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Competitor",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Build Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Competitor": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger Full Scrape",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Trigger Full Scrape": {
+            "main": [
+                [
+                    {
+                        "node": "Wait for Processing",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Wait for Processing": {
+            "main": [
+                [
+                    {
+                        "node": "Get Latest Updates",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Latest Updates": {
+            "main": [
+                [
+                    {
+                        "node": "Analyze by Source",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Analyze by Source": {
+            "main": [
+                [
+                    {
+                        "node": "Has High Impact?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has High Impact?": {
+            "main": [
+                [
+                    {
+                        "node": "Alert High Impact",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Alert High Impact": {
+            "main": [
+                [
+                    {
+                        "node": "Check Battlecard",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Battlecard": {
+            "main": [
+                [
+                    {
+                        "node": "Battlecard Exists?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Battlecard Exists?": {
+            "main": [
+                [
+                    {
+                        "node": "Sync to Salesforce",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Update Notion",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Sync to Salesforce": {
+            "main": [
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Notion": {
+            "main": [
+                [
+                    {
+                        "node": "Continue Loop",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Continue Loop": {
+            "main": [
+                [
+                    {
+                        "node": "Process Each Competitor",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Summary": {
+            "main": [
+                [
+                    {
+                        "node": "Complete Summary",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "VigilAI",
+            "id": "vigilai-tag"
+        },
+        {
+            "name": "Data Collection",
+            "id": "collection-tag"
+        }
+    ]
+}

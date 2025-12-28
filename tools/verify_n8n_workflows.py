@@ -5,6 +5,7 @@ import os
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 workflows = [
+    "n8n/complete_data_collection.json",
     "n8n/competitor_monitoring.json",
     "n8n/battlecard_automation.json", 
     "n8n/weekly_digest.json",
