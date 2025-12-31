@@ -36,6 +36,27 @@ Configure these in n8n Settings → Credentials:
 | **Slack API** | All workflows | Create Slack App with `chat:write` scope |
 | **SMTP** | Weekly Digest | Email server settings |
 
+### Backend API Credentials
+
+Configure these in your `.env` file for enhanced data collection:
+
+#### Social Media APIs (Optional but Recommended)
+
+| Variable | Purpose | How to Get |
+|----------|---------|------------|
+| `TWITTER_BEARER_TOKEN` | Twitter/X monitoring | [developer.twitter.com](https://developer.twitter.com/en/portal/dashboard) → Create App → Bearer Token |
+| `LINKEDIN_ACCESS_TOKEN` | LinkedIn company posts | [linkedin.com/developers](https://www.linkedin.com/developers/apps) → Create App → OAuth 2.0 |
+
+**Note:** Without these tokens, social monitoring falls back to Google News RSS (still functional but less comprehensive).
+
+#### Review Data APIs (Optional)
+
+| Variable | Purpose | How to Get |
+|----------|---------|------------|
+| `SERPAPI_KEY` | G2/Gartner review snippets | [serpapi.com](https://serpapi.com) → 100 free searches/month |
+
+**Note:** Without SerpAPI, the system uses Capterra scraping and Google News as fallbacks.
+
 ## Slack Channels Required
 
 Create these channels in your Slack workspace:
