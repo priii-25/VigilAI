@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     SALESFORCE_PASSWORD: str = ""
     SALESFORCE_SECURITY_TOKEN: str = ""
     
+    # Social Media APIs
+    TWITTER_BEARER_TOKEN: str = ""
+    LINKEDIN_ACCESS_TOKEN: str = ""
+    
+    # Review Data APIs (Optional)
+    SERPAPI_KEY: str = ""
+    
     # N8N
     N8N_HOST: str = "localhost"
     N8N_PORT: int = 5678
