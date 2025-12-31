@@ -505,3 +505,24 @@ class SocialMediaMonitor:
         score = min(10, (math.log1p(avg_engagement) / 10) * 10)
         
         return round(score, 2)
+
+
+def get_social_monitor() -> SocialMediaMonitor:
+    """
+    Factory function to create SocialMediaMonitor with config settings.
+    
+    Loads Twitter and LinkedIn credentials from environment variables.
+    
+    Returns:
+        Configured SocialMediaMonitor instance
+    """
+    try:
+        from src.core.config import settings
+        return SocialMediaMonitor(
+            twitter_bearer_token=settings.TWITTER_BEARER_TOKEN or None,
+            linkedin_access_token=settings.LINKEDIN_ACCESS_TOKEN or None
+        )
+    except ImportError:
+        logger.warning("Could not import settings, creating SocialMediaMonitor without credentials")
+        return SocialMediaMonitor()
+
