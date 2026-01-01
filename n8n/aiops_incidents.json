@@ -4,8 +4,7 @@
         {
             "parameters": {
                 "httpMethod": "POST",
-                "path": "anomaly",
-                "options": {}
+                "path": "anomaly"
             },
             "name": "Webhook: Anomaly",
             "type": "n8n-nodes-base.webhook",
@@ -47,8 +46,7 @@
                             "value": "={{ $json.log_source }}"
                         }
                     ]
-                },
-                "options": {}
+                }
             },
             "name": "Create Incident",
             "type": "n8n-nodes-base.httpRequest",
@@ -153,6 +151,7 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#vigilai-incidents",
                 "text": "🚨🚨🚨 *CRITICAL INCIDENT DETECTED* 🚨🚨🚨\n\n*Severity:* 🔴 CRITICAL\n*Source:* {{ $json.log_source }}\n*Score:* {{ ($json.anomaly_score * 100).toFixed(1) }}%\n\n*Error:*\n```{{ $json.log_message }}```\n\n*Root Cause Analysis:*\n{{ $json.root_cause }}\n\n*Affected Components:*\n{{ $json.affected_components.map(c => `• ${c}`).join('\\n') }}\n\n*Recommended Actions:*\n{{ $json.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\\n') }}\n\n<http://localhost:3000/ops|View in AIOps Dashboard>",
                 "attachments": [
@@ -193,6 +192,7 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#vigilai-incidents",
                 "text": "⚠️ *HIGH SEVERITY INCIDENT*\n\n*Severity:* 🟠 HIGH\n*Source:* {{ $json.log_source }}\n*Score:* {{ ($json.anomaly_score * 100).toFixed(1) }}%\n\n*Error:*\n```{{ $json.log_message }}```\n\n*Root Cause:* {{ $json.root_cause }}\n\n*Recommendations:*\n{{ $json.recommendations.slice(0, 3).map((r, i) => `${i + 1}. ${r}`).join('\\n') }}\n\n<http://localhost:3000/ops|View Details>",
                 "attachments": [
