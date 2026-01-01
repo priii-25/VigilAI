@@ -1,11 +1,11 @@
+```json
 {
     "name": "VigilAI AIOps Incidents",
     "nodes": [
         {
             "parameters": {
                 "httpMethod": "POST",
-                "path": "anomaly-detected",
-                "responseMode": "responseNode",
+                "path": "anomaly",
                 "options": {}
             },
             "name": "Webhook: Anomaly",
@@ -15,8 +15,8 @@
                 100,
                 300
             ],
-            "id": "webhook-anomaly",
-            "webhookId": "anomaly-webhook"
+            "webhookId": "anomaly-webhook",
+            "id": "webhook-anomaly"
         },
         {
             "parameters": {

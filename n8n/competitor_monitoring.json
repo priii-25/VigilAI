@@ -92,13 +92,11 @@
         {
             "parameters": {
                 "batchSize": 1,
-                "options": {
-                    "reset": false
-                }
+                "options": {}
             },
             "name": "Process Each Competitor",
             "type": "n8n-nodes-base.splitInBatches",
-            "typeVersion": 3,
+            "typeVersion": 1,
             "position": [
                 700,
                 300
