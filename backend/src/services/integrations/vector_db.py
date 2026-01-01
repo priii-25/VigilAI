@@ -11,7 +11,9 @@ from loguru import logger
 from src.core.config import settings
 import hashlib
 from datetime import datetime
+import asyncio
 import os
+from src.utils.ai_utils import gemini_limiter
 
 
 class VectorDBService:
@@ -51,11 +53,15 @@ class VectorDBService:
             self.client = None
             self.collection = None
     
-    def embed_text(self, text: str) -> List[float]:
+    async def embed_text(self, text: str) -> List[float]:
         """Convert text to vector embedding using Gemini"""
         try:
+            # Rate limit
+            await gemini_limiter.acquire()
+            
             # text-embedding-004 is current standard
-            result = genai.embed_content(
+            result = await asyncio.to_thread(
+                genai.embed_content,
                 model="models/text-embedding-004",
                 content=text,
                 task_type="retrieval_document"
@@ -65,7 +71,7 @@ class VectorDBService:
             logger.error(f"Error generating embedding with Gemini: {str(e)}")
             return []
     
-    def store_competitor_data(
+    async def store_competitor_data(
         self,
         competitor_id: int,
         competitor_name: str,
@@ -88,7 +94,7 @@ class VectorDBService:
                 return False
             
             # Generate embedding
-            embedding = self.embed_text(text_content)
+            embedding = await self.embed_text(text_content)
             
             if not embedding:
                 return False
@@ -120,7 +126,7 @@ class VectorDBService:
             logger.error(f"Error storing vector data: {str(e)}")
             return False
     
-    def search_similar_competitor_data(
+    async def search_similar_competitor_data(
         self,
         query: str,
         competitor_id: Optional[int] = None,
@@ -136,7 +142,7 @@ class VectorDBService:
         
         try:
             # Generate query embedding
-            query_embedding = self.embed_text(query)
+            query_embedding = await self.embed_text(query)
             
             if not query_embedding:
                 return []
@@ -174,7 +180,7 @@ class VectorDBService:
             logger.error(f"Error searching vectors: {str(e)}")
             return []
     
-    def get_battlecard_context(
+    async def get_battlecard_context(
         self,
         competitor_id: int,
         query: str,
@@ -189,7 +195,7 @@ class VectorDBService:
         
         try:
             # Search for relevant data
-            results = self.search_similar_competitor_data(
+            results = await self.search_similar_competitor_data(
                 query=query,
                 competitor_id=competitor_id,
                 top_k=5

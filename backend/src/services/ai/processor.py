@@ -16,6 +16,7 @@ from loguru import logger
 from src.core.config import settings
 from src.core.circuit_breaker import with_circuit_breaker, CircuitBreakerOpenError
 from src.services.ai.prompt_registry import prompt_registry, get_prompt_settings
+from src.utils.ai_utils import gemini_limiter
 
 
 class AIProcessor:
@@ -263,14 +264,18 @@ Date: {article_data.get('date', 'Unknown')}
         temperature: float = 0.3
     ) -> str:
         """
-        Call Google Gemini API with retry logic and exponential backoff.
+        Call Google Gemini API with rate limiting, retry logic and exponential backoff.
         
         Implements proper exponential backoff:
-        - Retry after 5s → 10s → 20s
+        - Retry after 30s → 60s → 90s (Aggressive backoff for free tier)
         - Maximum 3 retries
         """
+        # Ensure we respect global rate limit before even trying
+        await gemini_limiter.acquire()
+        
         max_retries = 3
-        base_delay = 5  # Start with 5 seconds
+        # Aggressive backoff for 429s since free tier quota reset takes time (usually 1 minute)
+        base_delay = 30  
         
         for attempt in range(max_retries):
             try:
@@ -295,13 +300,16 @@ Date: {article_data.get('date', 'Unknown')}
                         logger.error(f"Gemini API rate limit exceeded after {max_retries} retries")
                         raise
                     
-                    # Exponential backoff: 5s, 10s, 20s
-                    delay = base_delay * (2 ** attempt)
+                    # Exponential backoff
+                    delay = base_delay * (attempt + 1) # 30s, 60s, 90s
                     logger.warning(
                         f"Rate limit hit (attempt {attempt + 1}/{max_retries}). "
                         f"Retrying in {delay}s..."
                     )
                     await asyncio.sleep(delay)
+                    
+                    # Re-acquire rate limit token before retry
+                    await gemini_limiter.acquire()
                     
                 else:
                     logger.error(f"Gemini API error: {error_msg}")
