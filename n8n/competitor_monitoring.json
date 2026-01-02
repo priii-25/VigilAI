@@ -203,8 +203,7 @@
                             "operation": "larger",
                             "value2": 0
                         }
-                    ],
-                    "combineOperation": "all"
+                    ]
                 }
             },
             "name": "High Impact Check",
