@@ -37,8 +37,7 @@
             "parameters": {
                 "httpMethod": "POST",
                 "path": "manual-collection",
-                "responseMode": "lastNode",
-                "options": {}
+                "responseMode": "lastNode"
             },
             "name": "Webhook: Manual Trigger",
             "type": "n8n-nodes-base.webhook",
@@ -80,9 +79,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
-                "text": "🚀 *Data Collection Cycle Started*\n\n📊 Starting comprehensive data collection across all sources:\n• 🌐 Website Scraping (Pricing, Careers, Content)\n• 📰 News Monitoring (Google News, RSS)\n• 📱 Social Media (Twitter, LinkedIn)\n• 💼 Job Boards (Greenhouse, Lever)\n• ⭐ Review Platforms (G2, Gartner)\n• 🔍 SEO Tracking (Rankings, Sitemaps)\n\n_{{ $json.length || 0 }} competitors to process..._",
-                "otherOptions": {}
+                "text": "🚀 *Data Collection Cycle Started*\n\n📊 Starting comprehensive data collection across all sources:\n• 🌐 Website Scraping (Pricing, Careers, Content)\n• 📰 News Monitoring (Google News, RSS)\n• 📱 Social Media (Twitter, LinkedIn)\n• 💼 Job Boards (Greenhouse, Lever)\n• ⭐ Review Platforms (G2, Gartner)\n• 🔍 SEO Tracking (Rankings, Sitemaps)\n\n_{{ $json.length || 0 }} competitors to process..._"
             },
             "name": "Announce Start",
             "type": "n8n-nodes-base.slack",
@@ -101,8 +100,7 @@
         },
         {
             "parameters": {
-                "batchSize": 1,
-                "options": {}
+                "batchSize": 1
             },
             "name": "Process Each Competitor",
             "type": "n8n-nodes-base.splitInBatches",
@@ -166,8 +164,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/competitors/{{ $('Prepare Competitor').item.json.id }}/updates?limit=20",
                 "method": "GET",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Get Latest Updates",
             "type": "n8n-nodes-base.httpRequest",
@@ -214,14 +211,14 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel-urgent",
                 "text": "🚨 *HIGH IMPACT INTEL DETECTED*\n\n*Competitor:* {{ $json.competitor_name }}\n*High Priority Updates:* {{ $json.high_impact_count }}\n\n{{ $json.high_impact_updates.map(u => `• *${u.title}* (${u.category}) - Score: ${u.score}/10`).join('\\n') }}\n\n*Data Collection Summary:*\n📊 Pricing: {{ $json.by_source.pricing }} | 💼 Hiring: {{ $json.by_source.hiring }}\n📰 News: {{ $json.by_source.news }} | 📱 Social: {{ $json.by_source.social }}\n⭐ Reviews: {{ $json.by_source.reviews }} | 🔍 SEO: {{ $json.by_source.seo }}\n\n<http://localhost:3000/competitors/{{ $json.competitor_id }}|View Details>",
                 "attachments": [
                     {
                         "color": "#ff0000"
                     }
-                ],
-                "otherOptions": {}
+                ]
             },
             "name": "Alert High Impact",
             "type": "n8n-nodes-base.slack",
@@ -242,8 +239,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/competitor/{{ $json.competitor_id }}",
                 "method": "GET",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Check Battlecard",
             "type": "n8n-nodes-base.httpRequest",
@@ -279,8 +275,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/{{ $json.id }}/sync-crm",
                 "method": "POST",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Sync to Salesforce",
             "type": "n8n-nodes-base.httpRequest",
@@ -296,8 +291,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/{{ $json.id }}/publish",
                 "method": "POST",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Update Notion",
             "type": "n8n-nodes-base.httpRequest",
@@ -335,14 +329,14 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
                 "text": "✅ *Data Collection Cycle Complete*\n\n📊 *Summary*\n• Competitors Processed: {{ $json.competitors }}\n• Total Updates Collected: {{ $json.total_updates }}\n• High Impact Alerts: {{ $json.high_impact }}\n\n*By Data Source:*\n┌───────────────────────────────┐\n│ 🌐 Pricing:    {{ String($json.by_source.pricing).padStart(4) }} updates │\n│ 💼 Hiring:     {{ String($json.by_source.hiring).padStart(4) }} updates │\n│ 📰 News:       {{ String($json.by_source.news).padStart(4) }} updates │\n│ 📱 Social:     {{ String($json.by_source.social).padStart(4) }} updates │\n│ ⭐ Reviews:    {{ String($json.by_source.reviews).padStart(4) }} updates │\n│ 🔍 SEO:        {{ String($json.by_source.seo).padStart(4) }} updates │\n│ 📝 Content:    {{ String($json.by_source.content).padStart(4) }} updates │\n└───────────────────────────────┘\n\n<http://localhost:3000|Open Dashboard>",
                 "attachments": [
                     {
                         "color": "#22c55e"
                     }
-                ],
-                "otherOptions": {}
+                ]
             },
             "name": "Complete Summary",
             "type": "n8n-nodes-base.slack",

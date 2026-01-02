@@ -70,9 +70,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#vigilai-alerts",
-                "text": "⚠️ *VigilAI API Error*\n\nFailed to fetch competitors list. Please check the backend service.\n\nError: {{ $json.error || 'Unknown error' }}",
-                "otherOptions": {}
+                "text": "⚠️ *VigilAI API Error*\n\nFailed to fetch competitors list. Please check the backend service.\n\nError: {{ $json.error || 'Unknown error' }}"
             },
             "name": "Alert API Failure",
             "type": "n8n-nodes-base.slack",
@@ -91,8 +91,7 @@
         },
         {
             "parameters": {
-                "batchSize": 1,
-                "options": {}
+                "batchSize": 1
             },
             "name": "Process Each Competitor",
             "type": "n8n-nodes-base.splitInBatches",
@@ -143,8 +142,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/competitors/{{ $('Process Each Competitor').item.json.id }}/updates?limit=10",
                 "method": "GET",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Get Recent Updates",
             "type": "n8n-nodes-base.httpRequest",
@@ -220,6 +218,7 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel-urgent",
                 "text": "🚨 *HIGH PRIORITY COMPETITIVE INTEL*\n\n*{{ $json.updates[0].competitor_name }}* has {{ $json.count }} critical update(s)!\n\n{{ $json.updates.map(u => `• *${u.title}* (Impact: ${u.impact_score}/10)\\n  ${u.summary || 'No summary'}`).join('\\n\\n') }}\n\n<http://localhost:3000/competitors|View in VigilAI Dashboard>",
                 "attachments": [
@@ -238,8 +237,7 @@
                             }
                         ]
                     }
-                ],
-                "otherOptions": {}
+                ]
             },
             "name": "Urgent Slack Alert",
             "type": "n8n-nodes-base.slack",
@@ -260,8 +258,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/competitor/{{ $('Process Each Competitor').item.json.id }}",
                 "method": "GET",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Get Battlecard",
             "type": "n8n-nodes-base.httpRequest",
@@ -297,8 +294,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/{{ $json.id }}/sync-crm",
                 "method": "POST",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Sync to Salesforce",
             "type": "n8n-nodes-base.httpRequest",
@@ -312,9 +308,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
-                "text": "📊 *Scrape Complete: {{ $('Process Each Competitor').item.json.name }}*\n\nFound {{ $json.count }} update(s) in this batch.\n\n{{ $json.updates.slice(0, 3).map(u => `• ${u.title}`).join('\\n') }}{{ $json.count > 3 ? `\\n...and ${$json.count - 3} more` : '' }}",
-                "otherOptions": {}
+                "text": "📊 *Scrape Complete: {{ $('Process Each Competitor').item.json.name }}*\n\nFound {{ $json.count }} update(s) in this batch.\n\n{{ $json.updates.slice(0, 3).map(u => `• ${u.title}`).join('\\n') }}{{ $json.count > 3 ? `\\n...and ${$json.count - 3} more` : '' }}"
             },
             "name": "Normal Slack Update",
             "type": "n8n-nodes-base.slack",
@@ -344,9 +340,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
-                "text": "✅ *VigilAI Monitoring Complete*\n\n📅 {{ $now.format('YYYY-MM-DD HH:mm') }}\n\nAll competitors have been scraped and analyzed.",
-                "otherOptions": {}
+                "text": "✅ *VigilAI Monitoring Complete*\n\n📅 {{ $now.format('YYYY-MM-DD HH:mm') }}\n\nAll competitors have been scraped and analyzed."
             },
             "name": "Completion Notice",
             "type": "n8n-nodes-base.slack",

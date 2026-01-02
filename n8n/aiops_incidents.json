@@ -199,8 +199,7 @@
                     {
                         "color": "#f97316"
                     }
-                ],
-                "otherOptions": {}
+                ]
             },
             "name": "High Alert",
             "type": "n8n-nodes-base.slack",

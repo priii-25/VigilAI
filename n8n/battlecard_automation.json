@@ -5,8 +5,7 @@
             "parameters": {
                 "httpMethod": "POST",
                 "path": "battlecard-trigger",
-                "responseMode": "responseNode",
-                "options": {}
+                "responseMode": "responseNode"
             },
             "name": "Webhook: New Update",
             "type": "n8n-nodes-base.webhook",
@@ -56,8 +55,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/competitor/{{ $json.competitor_id }}",
                 "method": "GET",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Check Existing Battlecard",
             "type": "n8n-nodes-base.httpRequest",
@@ -110,8 +108,7 @@
                             "value": "=Auto-generated battlecard for {{ $('Parse Webhook Data').item.json.competitor_name }}"
                         }
                     ]
-                },
-                "options": {}
+                }
             },
             "name": "Create New Battlecard",
             "type": "n8n-nodes-base.httpRequest",
@@ -124,9 +121,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
-                "text": "📋 *New Battlecard Created*\n\nA battlecard has been auto-generated for *{{ $('Parse Webhook Data').item.json.competitor_name }}*\n\nTrigger: {{ $('Parse Webhook Data').item.json.update_type }} update (Impact: {{ $('Parse Webhook Data').item.json.impact_score }}/10)\n\n👉 <http://localhost:3000/battlecards|Review & Approve>",
-                "otherOptions": {}
+                "text": "📋 *New Battlecard Created*\n\nA battlecard has been auto-generated for *{{ $('Parse Webhook Data').item.json.competitor_name }}*\n\nTrigger: {{ $('Parse Webhook Data').item.json.update_type }} update (Impact: {{ $('Parse Webhook Data').item.json.impact_score }}/10)\n\n👉 <http://localhost:3000/battlecards|Review & Approve>"
             },
             "name": "Notify New Battlecard",
             "type": "n8n-nodes-base.slack",
@@ -181,8 +178,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/{{ $json.battlecard_id }}/publish",
                 "method": "POST",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Publish to Notion",
             "type": "n8n-nodes-base.httpRequest",
@@ -198,8 +194,7 @@
             "parameters": {
                 "url": "=http://backend:8000/api/v1/battlecards/{{ $json.battlecard_id }}/sync-crm",
                 "method": "POST",
-                "authentication": "none",
-                "options": {}
+                "authentication": "none"
             },
             "name": "Sync to Salesforce",
             "type": "n8n-nodes-base.httpRequest",
@@ -213,9 +208,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
-                "text": "✅ *Battlecard Updated & Synced*\n\n*{{ $('Prepare Update').item.json.competitor_name }}* battlecard has been:\n• ✓ Published to Notion\n• ✓ Synced to Salesforce\n\n<http://localhost:3000/battlecards|View Dashboard>",
-                "otherOptions": {}
+                "text": "✅ *Battlecard Updated & Synced*\n\n*{{ $('Prepare Update').item.json.competitor_name }}* battlecard has been:\n• ✓ Published to Notion\n• ✓ Synced to Salesforce\n\n<http://localhost:3000/battlecards|View Dashboard>"
             },
             "name": "Notify Sync Complete",
             "type": "n8n-nodes-base.slack",
@@ -234,9 +229,9 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "#competitive-intel",
-                "text": "🔄 *Battlecard Update Pending*\n\n*{{ $json.competitor_name }}* battlecard needs review before re-publishing.\n\nPlease review and approve changes.\n\n<http://localhost:3000/battlecards|Review Now>",
-                "otherOptions": {}
+                "text": "🔄 *Battlecard Update Pending*\n\n*{{ $json.competitor_name }}* battlecard needs review before re-publishing.\n\nPlease review and approve changes.\n\n<http://localhost:3000/battlecards|Review Now>"
             },
             "name": "Request Review",
             "type": "n8n-nodes-base.slack",

@@ -36,8 +36,7 @@
         },
         {
             "parameters": {
-                "batchSize": 1,
-                "options": {}
+                "batchSize": 1
             },
             "name": "Split In Batches",
             "type": "n8n-nodes-base.splitInBatches",
@@ -90,10 +89,10 @@
         },
         {
             "parameters": {
+                "select": "channel",
                 "channel": "competitive-intel",
                 "text": "=🚀 *Scrape Complete for {{$node[\"Split In Batches\"].json[\"name\"]}}*\n\nFound {{$json.length}} updates.",
-                "attachments": [],
-                "otherOptions": {}
+                "attachments": []
             },
             "name": "Slack Notification",
             "type": "n8n-nodes-base.slack",
