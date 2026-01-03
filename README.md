@@ -76,6 +76,20 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 | **Loguru** | Logging |
 | **Sentry SDK** | Error monitoring |
 
+###  Authentication
+| Component | Technology | Description |
+|-----------|------------|-------------|
+| **Password Hashing** | bcrypt  | Secure password storage |
+| **Token Auth** | JWT (python-jose) | Stateless authentication |
+
+
+### 🎙️ Voice Assistant Architecture
+| Component | Technology | Description |
+|-----------|------------|-------------|
+| **Speech-to-Text** | Web Speech API | Browser's native `SpeechRecognition` |
+| **LLM Processing** | Google Gemini 2.5 Flash | Context-aware query answering |
+| **Text-to-Speech** | Web Speech API | Browser's native `SpeechSynthesis` |
+
 ---
 
 ## �🚀 Quick Start (How to Run)
