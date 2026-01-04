@@ -16,9 +16,9 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 - **Voice Assistant**: "Jarvis-like" voice control to query platform data and get spoken summaries
 ---
 
-## �️ Tech Stack
+## Tech Stack
 
-### 🎨 Frontend
+### Frontend
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **Next.js** | 14.0.4 | React framework |
@@ -28,7 +28,7 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 | **Chart.js** | 4.5.1 | Data visualization |
 | **Lucide React** | 0.294.0 | Icons |
 
-### ⚙️ Backend
+### Backend
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **FastAPI** | 0.104.1 | Web framework |
@@ -45,7 +45,7 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 | **Redis** | 7 (Alpine) | Caching & message broker |
 | **ChromaDB** | 0.4.22 | Vector database |
 
-### 🤖 AI/ML
+### AI/ML
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | **PyTorch** | 2.2.0 | ML framework |
@@ -53,7 +53,7 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 | **Sentence-Transformers** | 2.2.2 | Embeddings |
 | **Google Gemini AI** | 0.3.2 | LLM integration |
 
-### 🔧 Integrations
+###  Integrations
 | Technology | Purpose |
 |------------|---------|
 | **Slack SDK** | Notifications |
@@ -61,7 +61,7 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 | **Notion Client** | Battlecard sync |
 | **n8n** | Workflow automation |
 
-### 🌐 Web Scraping
+###  Web Scraping
 | Technology | Purpose |
 |------------|---------|
 | **BeautifulSoup4** | HTML parsing |
@@ -69,21 +69,21 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 | **Selenium** | Browser automation |
 | **aiohttp** | HTTP clients |
 
-### 🐳 Infrastructure
+###  Infrastructure
 | Technology | Purpose |
 |------------|---------|
 | **Docker & Docker Compose** | Containerization |
 | **Loguru** | Logging |
 | **Sentry SDK** | Error monitoring |
 
-###  Authentication
+### Authentication
 | Component | Technology | Description |
 |-----------|------------|-------------|
 | **Password Hashing** | bcrypt  | Secure password storage |
 | **Token Auth** | JWT (python-jose) | Stateless authentication |
 
 
-### 🎙️ Voice Assistant Architecture
+### Voice Assistant Architecture
 | Component | Technology | Description |
 |-----------|------------|-------------|
 | **Speech-to-Text** | Web Speech API | Browser's native `SpeechRecognition` |
@@ -92,7 +92,7 @@ See [TECHNICAL_DOCS.md](./TECHNICAL_DOCS.md) for full architecture, API referenc
 
 ---
 
-## �🚀 Quick Start (How to Run)
+##  Quick Start (How to Run)
 
 ### Prerequisites
 
@@ -135,9 +135,9 @@ docker-compose logs -f backend
 
 ---
 
-## 🎮 Usage Guide
+##  Usage Guide
 
-### 🎙️ Using the Voice Assistant
+### Using the Voice Assistant
 1.  Look for the **Microphone Icon 🎙️** in the bottom-right corner of any page.
 2.  Click to activate.
 3.  **Ask a question**:
@@ -146,13 +146,13 @@ docker-compose logs -f backend
     *   *"Are there any system errors?"*
 4.  VigilAI will speak the answer back to you using the platform's aggregated data!
 
-### 📊 Monitoring Competitors
+###  Monitoring Competitors
 1.  Go to the **Competitors** page.
 2.  Add a competitor (Domain + Name).
 3.  Click **Scrape** to fetch initial data.
 4.  View generated **Battlecards** to see Strengths, Weaknesses, and Kill Points.
 
-### 🔔 Receiving Alerts
+### Receiving Alerts
 - Ensure you have configured Slack in `.env`.
 - You will receive notifications in `#competitive-intel` when:
     - A competitor changes pricing.
